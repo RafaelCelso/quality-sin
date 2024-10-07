@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { db, collection, getDocs, query, orderBy, limit, deleteDoc, doc } from '../firebase';
-import { Plus, Search, Phone, Mail, MessageSquare, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MessageSquare, Edit, Trash2, AlertTriangle } from 'lucide-react';
 
 const Monitorias: React.FC = () => {
   const [monitorias, setMonitorias] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [monitoriaToDelete, setMonitoriaToDelete] = useState<any>(null);
   const [colaboradores, setColaboradores] = useState<any[]>([]);
   const [colaboradorSearch, setColaboradorSearch] = useState('');
   const [selectedColaborador, setSelectedColaborador] = useState<any>(null);
@@ -50,15 +52,17 @@ const Monitorias: React.FC = () => {
     monitoria.tipo.toLowerCase().includes(searchTerm)
   );
 
-  const filteredColaboradores = colaboradores.filter(colaborador =>
-    colaborador.nome.toLowerCase().includes(colaboradorSearch.toLowerCase())
-  );
+  const handleDeleteClick = (monitoria: any) => {
+    setMonitoriaToDelete(monitoria);
+    setShowDeleteModal(true);
+  };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir esta monitoria?")) {
+  const handleDelete = async () => {
+    if (monitoriaToDelete) {
       try {
-        await deleteDoc(doc(db, 'monitorias', id));
+        await deleteDoc(doc(db, 'monitorias', monitoriaToDelete.id));
         fetchMonitorias();
+        setShowDeleteModal(false);
       } catch (error) {
         console.error("Erro ao excluir monitoria:", error);
       }
@@ -85,6 +89,25 @@ const Monitorias: React.FC = () => {
       navigate(route, { state: { colaborador: selectedColaborador, tipoMonitoria } });
       setShowModal(false);
     }
+  };
+
+  const handleEditClick = (monitoria: any) => {
+    let route = '';
+    switch (monitoria.tipo) {
+      case 'Ligação':
+        route = '/monitoria-ligacao';
+        break;
+      case 'E-mail':
+        route = '/monitoria-email';
+        break;
+      case 'Chat':
+        route = '/monitoria-chat';
+        break;
+      default:
+        console.error("Tipo de monitoria inválido");
+        return;
+    }
+    navigate(route, { state: { monitoria, isEditing: true } });
   };
 
   return (
@@ -129,17 +152,13 @@ const Monitorias: React.FC = () => {
                 <td className="py-2 px-4 border-b">{monitoria.notaMedia.toFixed(2)}%</td>
                 <td className="py-2 px-4 border-b">
                   <button
-                    onClick={() => {
-                      navigate(`/monitoria-${monitoria.tipo.toLowerCase()}`, {
-                        state: { monitoria, isEditing: true }
-                      });
-                    }}
+                    onClick={() => handleEditClick(monitoria)}
                     className="text-blue-500 hover:text-blue-700 mr-2"
                   >
                     <Edit size={20} />
                   </button>
                   <button
-                    onClick={() => handleDelete(monitoria.id)}
+                    onClick={() => handleDeleteClick(monitoria)}
                     className="text-red-500 hover:text-red-700"
                   >
                     <Trash2 size={20} />
@@ -164,18 +183,23 @@ const Monitorias: React.FC = () => {
                 />
                 {colaboradorSearch.length > 0 && (
                   <ul className="mt-2 max-h-40 overflow-y-auto">
-                    {filteredColaboradores.map((colaborador) => (
-                      <li
-                        key={colaborador.id}
-                        onClick={() => {
-                          setSelectedColaborador(colaborador);
-                          setColaboradorSearch(colaborador.nome);
-                        }}
-                        className="cursor-pointer hover:bg-gray-100 p-2"
-                      >
-                        {colaborador.nome}
-                      </li>
-                    ))}
+                    {colaboradores
+                      .filter(colaborador => 
+                        colaborador.nome.toLowerCase().includes(colaboradorSearch.toLowerCase())
+                      )
+                      .map((colaborador) => (
+                        <li
+                          key={colaborador.id}
+                          onClick={() => {
+                            setSelectedColaborador(colaborador);
+                            setColaboradorSearch(colaborador.nome);
+                          }}
+                          className="cursor-pointer hover:bg-gray-100 p-2"
+                        >
+                          {colaborador.nome}
+                        </li>
+                      ))
+                    }
                   </ul>
                 )}
               </div>
@@ -225,6 +249,38 @@ const Monitorias: React.FC = () => {
                 >
                   Iniciar Monitoria
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3 text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mt-4">Excluir Monitoria</h3>
+                <div className="mt-2 px-7 py-3">
+                  <p className="text-sm text-gray-500">
+                    Tem certeza que deseja excluir esta monitoria? Esta ação não pode ser desfeita.
+                  </p>
+                </div>
+                <div className="items-center px-4 py-3">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md mr-2 hover:bg-gray-400"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
             </div>
           </div>
