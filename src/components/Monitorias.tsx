@@ -44,6 +44,21 @@ const Monitorias: React.FC = () => {
     }
   };
 
+  const handleColaboradorSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const searchTerm = e.target.value.toLowerCase();
+    setColaboradorSearch(searchTerm);
+    const filtered = colaboradores.filter(colaborador =>
+      colaborador.nome.toLowerCase().includes(searchTerm)
+    );
+    setFilteredColaboradores(filtered);
+  };
+
+  const handleSelectColaborador = (colaborador: any) => {
+    setSelectedColaborador(colaborador);
+    setColaboradorSearch(colaborador.nome);
+    setFilteredColaboradores([]);
+  };
+
   const handleCreateMonitoria = () => {
     if (!selectedColaborador || !tipoMonitoria) {
       setErrorMessage("Por favor, selecione um colaborador e um tipo de monitoria.");
@@ -69,36 +84,27 @@ const Monitorias: React.FC = () => {
     setColaboradorSearch('');
   };
 
-  const handleColaboradorSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const searchTerm = e.target.value.toLowerCase();
-    setColaboradorSearch(searchTerm);
-    const filtered = colaboradores.filter(colaborador => 
-      colaborador.nome.toLowerCase().includes(searchTerm)
-    );
-    setFilteredColaboradores(filtered);
-  };
-
-  const handleSelectColaborador = (colaborador: any) => {
-    setSelectedColaborador(colaborador);
-    setColaboradorSearch(colaborador.nome);
-    setFilteredColaboradores([]);
-  };
-
   const handleEditMonitoria = (monitoria: any) => {
     if (monitoria.tipo === 'Ligação') {
       navigate('/monitoria-ligacao', { 
         state: { 
           monitoria: monitoria,
-          isEditing: true
+          isEditing: true,
+          colaborador: { id: monitoria.colaboradorId, nome: monitoria.colaboradorNome }
         } 
       });
     } else {
-      // Implemente a lógica para editar outros tipos de monitoria aqui
+      // Implemente a lógica para outros tipos de monitoria aqui
       console.log("Editando monitoria:", monitoria);
     }
   };
 
-  const handleDeleteMonitoria = async () => {
+  const handleDeleteMonitoria = (monitoria: any) => {
+    setMonitoriaToDelete(monitoria);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteMonitoria = async () => {
     if (monitoriaToDelete) {
       try {
         await deleteDoc(doc(db, 'monitorias', monitoriaToDelete.id));
@@ -107,23 +113,38 @@ const Monitorias: React.FC = () => {
         setMonitoriaToDelete(null);
       } catch (error) {
         console.error("Erro ao excluir monitoria:", error);
-        setErrorMessage("Erro ao excluir monitoria. Por favor, tente novamente.");
       }
     }
   };
+
+  const tiposMonitoria = [
+    { tipo: 'Ligação', icon: <Phone size={32} /> },
+    { tipo: 'E-mail', icon: <Mail size={32} /> },
+    { tipo: 'Chat', icon: <MessageSquare size={32} /> },
+  ];
 
   return (
     <div className="flex">
       <Sidebar />
       <div className="flex-1 p-8">
         <h1 className="text-2xl font-bold mb-4">Monitorias</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-emerald-500 text-white px-4 py-2 rounded hover:bg-emerald-600 mb-4"
-        >
-          <Plus size={20} className="inline mr-2" />
-          Nova Monitoria
-        </button>
+        
+        <div className="mb-4 flex items-center space-x-4">
+          <input
+            type="text"
+            placeholder="Buscar por colaborador"
+            value={colaboradorSearch}
+            onChange={handleColaboradorSearch}
+            className="border rounded px-2 py-1 flex-grow"
+          />
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-emerald-500 text-white px-4 py-2 rounded hover:bg-emerald-600 flex items-center"
+          >
+            <Plus size={20} className="mr-2" />
+            Nova Monitoria
+          </button>
+        </div>
 
         <table className="min-w-full bg-white">
           <thead className="bg-[#10B981] text-white">
@@ -131,17 +152,19 @@ const Monitorias: React.FC = () => {
               <th className="py-2 px-4 border-b text-left">Colaborador</th>
               <th className="py-2 px-4 border-b text-left">Tipo</th>
               <th className="py-2 px-4 border-b text-left">Data</th>
+              <th className="py-2 px-4 border-b text-left">Nota</th>
               <th className="py-2 px-4 border-b text-left">Ações</th>
             </tr>
           </thead>
           <tbody>
             {monitorias.map((monitoria) => (
               <tr key={monitoria.id}>
-                <td className="py-2 px-4 border-b">{monitoria.colaborador && monitoria.colaborador.nome ? monitoria.colaborador.nome : 'N/A'}</td>
-                <td className="py-2 px-4 border-b">{monitoria.tipo || 'N/A'}</td>
+                <td className="py-2 px-4 border-b">{monitoria.colaboradorNome}</td>
+                <td className="py-2 px-4 border-b">{monitoria.tipo}</td>
                 <td className="py-2 px-4 border-b">
-                  {monitoria.dataCriacao ? new Date(monitoria.dataCriacao.seconds * 1000).toLocaleString() : 'N/A'}
+                  {new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}
                 </td>
+                <td className="py-2 px-4 border-b">{monitoria.notaMedia}%</td>
                 <td className="py-2 px-4 border-b">
                   <button
                     onClick={() => handleEditMonitoria(monitoria)}
@@ -150,10 +173,7 @@ const Monitorias: React.FC = () => {
                     <Edit size={20} />
                   </button>
                   <button
-                    onClick={() => {
-                      setMonitoriaToDelete(monitoria);
-                      setShowDeleteModal(true);
-                    }}
+                    onClick={() => handleDeleteMonitoria(monitoria)}
                     className="text-red-500 hover:text-red-700"
                   >
                     <Trash2 size={20} />
@@ -165,24 +185,24 @@ const Monitorias: React.FC = () => {
         </table>
 
         {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-            <div className="relative p-8 border w-full max-w-md shadow-lg rounded-md bg-white">
-              <h3 className="text-2xl font-bold mb-6">Nova Monitoria</h3>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <h3 className="text-lg font-bold mb-4">Nova Monitoria</h3>
               <div className="mb-4">
                 <input
                   type="text"
                   placeholder="Buscar colaborador"
                   value={colaboradorSearch}
                   onChange={handleColaboradorSearch}
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full border rounded px-2 py-1"
                 />
                 {filteredColaboradores.length > 0 && (
-                  <ul className="mt-2 border rounded-md max-h-40 overflow-y-auto">
-                    {filteredColaboradores.map(colaborador => (
+                  <ul className="mt-2 border rounded">
+                    {filteredColaboradores.map((colaborador) => (
                       <li
                         key={colaborador.id}
                         onClick={() => handleSelectColaborador(colaborador)}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        className="px-2 py-1 hover:bg-gray-100 cursor-pointer"
                       >
                         {colaborador.nome}
                       </li>
@@ -191,20 +211,18 @@ const Monitorias: React.FC = () => {
                 )}
               </div>
               <div className="mb-4">
-                <h4 className="text-lg font-semibold mb-2">Tipo de Monitoria</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  {['Ligação', 'E-mail', 'Chat'].map((tipo) => (
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Monitoria</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {tiposMonitoria.map((tipo) => (
                     <button
-                      key={tipo}
-                      onClick={() => setTipoMonitoria(tipo)}
-                      className={`p-4 border rounded-md flex flex-col items-center justify-center ${
-                        tipoMonitoria === tipo ? 'bg-emerald-100 border-emerald-500' : ''
-                      }`}
+                      key={tipo.tipo}
+                      onClick={() => setTipoMonitoria(tipo.tipo)}
+                      className={`flex flex-col items-center justify-center p-3 border rounded-lg ${
+                        tipoMonitoria === tipo.tipo ? 'bg-emerald-100 border-emerald-500' : 'bg-white'
+                      } hover:bg-emerald-50 transition-colors duration-200`}
                     >
-                      {tipo === 'Ligação' && <Phone size={24} />}
-                      {tipo === 'E-mail' && <Mail size={24} />}
-                      {tipo === 'Chat' && <MessageSquare size={24} />}
-                      <span className="mt-2">{tipo}</span>
+                      <div className="text-emerald-600 mb-2">{tipo.icon}</div>
+                      <span className="text-sm font-medium">{tipo.tipo}</span>
                     </button>
                   ))}
                 </div>
@@ -215,13 +233,13 @@ const Monitorias: React.FC = () => {
               <div className="flex justify-end">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md mr-4 hover:bg-gray-400 transition-colors"
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 mr-2"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleCreateMonitoria}
-                  className="bg-emerald-500 text-white px-6 py-2 rounded-md hover:bg-emerald-600 transition-colors"
+                  className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600"
                 >
                   Criar Monitoria
                 </button>
@@ -231,20 +249,20 @@ const Monitorias: React.FC = () => {
         )}
 
         {showDeleteModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-            <div className="relative p-8 border w-full max-w-md shadow-lg rounded-md bg-white">
-              <h3 className="text-2xl font-bold mb-6">Confirmar Exclusão</h3>
-              <p className="mb-4">Tem certeza que deseja excluir esta monitoria?</p>
-              <div className="flex justify-end">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <h3 className="text-lg font-bold mb-4">Confirmar Exclusão</h3>
+              <p>Tem certeza que deseja excluir esta monitoria?</p>
+              <div className="flex justify-end mt-4">
                 <button
                   onClick={() => setShowDeleteModal(false)}
-                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md mr-4 hover:bg-gray-400 transition-colors"
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 mr-2"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={handleDeleteMonitoria}
-                  className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors"
+                  onClick={confirmDeleteMonitoria}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   Excluir
                 </button>
