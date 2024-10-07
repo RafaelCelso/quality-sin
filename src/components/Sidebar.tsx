@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, PhoneCall, Settings, Users, BookOpen, LogOut, User } from 'lucide-react';
+import { Home, PhoneCall, Settings, Users, BookOpen, LogOut, User, Shield } from 'lucide-react';
 import { auth, signOut } from '../firebase';
 
 const Sidebar: React.FC = () => {
@@ -15,6 +15,7 @@ const Sidebar: React.FC = () => {
     { icon: <BookOpen size={20} />, text: 'Treinamentos', link: '/treinamentos' },
     { icon: <User size={20} />, text: 'Perfil', link: '/perfil' },
     { icon: <Users size={20} />, text: 'Usuários', link: '/usuarios' },
+    { icon: <Shield size={20} />, text: 'Permissões', link: '/permissoes' },
   ];
 
   const handleLogout = async () => {

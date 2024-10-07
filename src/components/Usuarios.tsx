@@ -16,17 +16,23 @@ const Usuarios: React.FC = () => {
     email: '',
     permissao: '',
     senha: '',
-    confirmarSenha: ''
+    confirmarSenha: '',
+    colaboradorId: '',
+    colaboradorNome: ''
   });
   const [novaSenha, setNovaSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [colaboradores, setColaboradores] = useState<any[]>([]);
+  const [colaboradorSearch, setColaboradorSearch] = useState('');
+  const [showColaboradorList, setShowColaboradorList] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchUsuarios();
+    fetchColaboradores();
   }, []);
 
   const fetchUsuarios = async () => {
@@ -37,6 +43,17 @@ const Usuarios: React.FC = () => {
       setUsuarios(fetchedUsuarios);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
+    }
+  };
+
+  const fetchColaboradores = async () => {
+    try {
+      const q = query(collection(db, 'colaboradores'), orderBy('nome'), limit(100));
+      const querySnapshot = await getDocs(q);
+      const fetchedColaboradores = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setColaboradores(fetchedColaboradores);
+    } catch (error) {
+      console.error("Erro ao buscar colaboradores:", error);
     }
   };
 
@@ -74,7 +91,9 @@ const Usuarios: React.FC = () => {
         await updateDoc(userRef, {
           nome: editingUser.nome,
           email: editingUser.email,
-          permissao: editingUser.permissao
+          permissao: editingUser.permissao,
+          colaboradorId: editingUser.colaboradorId,
+          colaboradorNome: editingUser.colaboradorNome
         });
 
         if (novaSenha) {
@@ -95,9 +114,11 @@ const Usuarios: React.FC = () => {
           nome: novoUsuario.nome,
           email: novoUsuario.email,
           permissao: novoUsuario.permissao,
+          colaboradorId: novoUsuario.colaboradorId,
+          colaboradorNome: novoUsuario.colaboradorNome,
           uid: userCredential.user.uid
         });
-        setNovoUsuario({ nome: '', email: '', permissao: '', senha: '', confirmarSenha: '' });
+        setNovoUsuario({ nome: '', email: '', permissao: '', senha: '', confirmarSenha: '', colaboradorId: '', colaboradorNome: '' });
         setSuccessMessage("Novo usuário criado com sucesso.");
       }
 
@@ -138,10 +159,12 @@ const Usuarios: React.FC = () => {
   const closeModal = () => {
     setShowModal(false);
     setEditingUser(null);
-    setNovoUsuario({ nome: '', email: '', permissao: '', senha: '', confirmarSenha: '' });
+    setNovoUsuario({ nome: '', email: '', permissao: '', senha: '', confirmarSenha: '', colaboradorId: '', colaboradorNome: '' });
     setNovaSenha('');
     setError(null);
     setSuccessMessage(null);
+    setColaboradorSearch('');
+    setShowColaboradorList(false);
   };
 
   const closeDeleteModal = () => {
@@ -149,6 +172,29 @@ const Usuarios: React.FC = () => {
     setUserToDelete(null);
     setError(null);
     setSuccessMessage(null);
+  };
+
+  const handleColaboradorSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setColaboradorSearch(e.target.value);
+    setShowColaboradorList(true);
+  };
+
+  const handleColaboradorSelect = (colaborador: any) => {
+    if (editingUser) {
+      setEditingUser(prev => ({
+        ...prev,
+        colaboradorId: colaborador.id,
+        colaboradorNome: colaborador.nome
+      }));
+    } else {
+      setNovoUsuario(prev => ({
+        ...prev,
+        colaboradorId: colaborador.id,
+        colaboradorNome: colaborador.nome
+      }));
+    }
+    setColaboradorSearch(colaborador.nome);
+    setShowColaboradorList(false);
   };
 
   return (
@@ -183,6 +229,7 @@ const Usuarios: React.FC = () => {
               <th className="py-2 px-4 border-b text-left">Nome</th>
               <th className="py-2 px-4 border-b text-left">Email</th>
               <th className="py-2 px-4 border-b text-left">Permissão</th>
+              <th className="py-2 px-4 border-b text-left">Colaborador</th>
               <th className="py-2 px-4 border-b text-left">Ações</th>
             </tr>
           </thead>
@@ -192,6 +239,7 @@ const Usuarios: React.FC = () => {
                 <td className="py-2 px-4 border-b">{usuario.nome}</td>
                 <td className="py-2 px-4 border-b">{usuario.email}</td>
                 <td className="py-2 px-4 border-b">{usuario.permissao}</td>
+                <td className="py-2 px-4 border-b">{usuario.colaboradorNome}</td>
                 <td className="py-2 px-4 border-b">
                   <button
                     onClick={() => handleEdit(usuario)}
@@ -300,6 +348,41 @@ const Usuarios: React.FC = () => {
                     <option value="Qualidade">Qualidade</option>
                     <option value="Supervisor">Supervisor</option>
                   </select>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Colaborador</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={colaboradorSearch}
+                      onChange={handleColaboradorSearch}
+                      placeholder="Buscar colaborador..."
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    />
+                    {showColaboradorList && (
+                      <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {colaboradores
+                          .filter(colaborador => 
+                            colaborador.nome.toLowerCase().includes(colaboradorSearch.toLowerCase())
+                          )
+                          .map((colaborador) => (
+                            <li
+                              key={colaborador.id}
+                              onClick={() => handleColaboradorSelect(colaborador)}
+                              className="cursor-pointer hover:bg-gray-100 p-2"
+                            >
+                              {colaborador.nome}
+                            </li>
+                          ))
+                        }
+                      </ul>
+                    )}
+                  </div>
+                  {(editingUser ? editingUser.colaboradorNome : novoUsuario.colaboradorNome) && (
+                    <p className="mt-1 text-sm text-gray-500">
+                      Colaborador selecionado: {editingUser ? editingUser.colaboradorNome : novoUsuario.colaboradorNome}
+                    </p>
+                  )}
                 </div>
                 {error && (
                   <div className="mb-4 text-red-500">{error}</div>

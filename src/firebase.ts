@@ -1,15 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signOut, 
-  updateProfile, 
-  updateEmail, 
-  updatePassword, 
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  sendPasswordResetEmail,
-  createUserWithEmailAndPassword
-} from 'firebase/auth';
+import { getAuth, signOut, updateProfile, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
 import { 
   getFirestore, 
   collection, 
@@ -23,7 +13,8 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  Timestamp
+  Timestamp,
+  setDoc
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -66,5 +57,6 @@ export {
   updateDoc,
   deleteDoc,
   doc,
-  Timestamp
+  Timestamp,
+  setDoc
 };
