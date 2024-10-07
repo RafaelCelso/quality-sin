@@ -10,6 +10,8 @@ import Colaboradores from './components/Colaboradores';
 import Usuarios from './components/Usuarios';
 import Monitorias from './components/Monitorias';
 import MonitoriaLigacao from './components/MonitoriaLigacao';
+import MonitoriaEmail from './components/MonitoriaEmail';
+import MonitoriaChat from './components/MonitoriaChat';
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -57,6 +59,14 @@ function App() {
           <Route 
             path="/monitoria-ligacao" 
             element={user ? <MonitoriaLigacao /> : <Navigate to="/" />} 
+          />
+          <Route 
+            path="/monitoria-email" 
+            element={user ? <MonitoriaEmail /> : <Navigate to="/" />} 
+          />
+          <Route 
+            path="/monitoria-chat" 
+            element={user ? <MonitoriaChat /> : <Navigate to="/" />} 
           />
         </Routes>
       </div>
