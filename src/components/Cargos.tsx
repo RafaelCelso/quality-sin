@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from '../firebase';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, AlertTriangle, X } from 'lucide-react';
 import usePermissions from '../hooks/usePermissions';
 
 const Cargos: React.FC = () => {
@@ -10,7 +10,9 @@ const Cargos: React.FC = () => {
   const { checkPermission, loading: permissionsLoading } = usePermissions();
   const [cargos, setCargos] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingCargo, setEditingCargo] = useState<any>(null);
+  const [cargoToDelete, setCargoToDelete] = useState<any>(null);
   const [novoCargo, setNovoCargo] = useState({ nome: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,11 +72,12 @@ const Cargos: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir este cargo?")) {
+  const handleDelete = async () => {
+    if (cargoToDelete) {
       try {
-        await deleteDoc(doc(db, 'cargos', id));
+        await deleteDoc(doc(db, 'cargos', cargoToDelete.id));
         fetchCargos();
+        setShowDeleteModal(false);
       } catch (error) {
         console.error("Erro ao excluir cargo:", error);
         setError("Erro ao excluir cargo. Por favor, tente novamente.");
@@ -83,61 +86,78 @@ const Cargos: React.FC = () => {
   };
 
   if (loading || permissionsLoading) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-emerald-500"></div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-red-500">{error}</div>;
+    return <div className="text-red-500 text-center mt-8">{error}</div>;
   }
 
   return (
-    <div className="flex">
+    <div className="flex bg-gray-100 min-h-screen">
       <Sidebar />
       <div className="flex-1 p-8">
-        <h1 className="text-2xl font-bold mb-4">Cargos</h1>
-        
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-emerald-500 text-white px-4 py-2 rounded hover:bg-emerald-600 flex items-center mb-4"
-        >
-          <Plus size={20} className="mr-2" />
-          Novo Cargo
-        </button>
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">Cargos</h1>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
+            >
+              <Plus size={20} className="mr-2" />
+              Novo Cargo
+            </button>
+          </div>
 
-        <table className="min-w-full bg-white">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="py-2 px-4 border-b text-left">Nome</th>
-              <th className="py-2 px-4 border-b text-left">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cargos.map((cargo) => (
-              <tr key={cargo.id}>
-                <td className="py-2 px-4 border-b">{cargo.nome}</td>
-                <td className="py-2 px-4 border-b">
-                  <button
-                    onClick={() => handleEdit(cargo)}
-                    className="text-blue-500 hover:text-blue-700 mr-2"
-                  >
-                    <Edit size={20} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(cargo.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {cargos.map((cargo) => (
+                  <tr key={cargo.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">{cargo.nome}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleEdit(cargo)}
+                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                      >
+                        <Edit size={20} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCargoToDelete(cargo);
+                          setShowDeleteModal(true);
+                        }}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <h3 className="text-lg font-bold mb-4">{editingCargo ? 'Editar Cargo' : 'Novo Cargo'}</h3>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">{editingCargo ? 'Editar Cargo' : 'Novo Cargo'}</h2>
+                <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">
+                  <X size={24} />
+                </button>
+              </div>
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Nome</label>
@@ -146,7 +166,7 @@ const Cargos: React.FC = () => {
                     name="nome"
                     value={editingCargo ? editingCargo.nome : novoCargo.nome}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
                     required
                   />
                 </div>
@@ -154,18 +174,46 @@ const Cargos: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                    className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors duration-200"
                   >
                     {editingCargo ? 'Atualizar' : 'Salvar'}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+              <div className="flex items-center justify-center mb-4">
+                <AlertTriangle className="h-12 w-12 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-center mb-4">Excluir Cargo</h3>
+              <p className="text-center mb-6">
+                Tem certeza que deseja excluir este cargo? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
+                >
+                  Excluir
+                </button>
+              </div>
             </div>
           </div>
         )}

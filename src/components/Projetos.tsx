@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from '../firebase';
-import { Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, AlertTriangle, X } from 'lucide-react';
 import usePermissions from '../hooks/usePermissions';
 
 const Projetos: React.FC = () => {
@@ -72,11 +72,6 @@ const Projetos: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleDeleteClick = (projeto: any) => {
-    setProjetoToDelete(projeto);
-    setShowDeleteModal(true);
-  };
-
   const handleDelete = async () => {
     if (projetoToDelete) {
       try {
@@ -106,7 +101,7 @@ const Projetos: React.FC = () => {
     <div className="flex bg-gray-100 min-h-screen">
       <Sidebar />
       <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-800">Projetos</h1>
             <button
@@ -140,7 +135,10 @@ const Projetos: React.FC = () => {
                         <Edit size={20} />
                       </button>
                       <button
-                        onClick={() => handleDeleteClick(projeto)}
+                        onClick={() => {
+                          setProjetoToDelete(projeto);
+                          setShowDeleteModal(true);
+                        }}
                         className="text-red-600 hover:text-red-900"
                       >
                         <Trash2 size={20} />
@@ -156,7 +154,12 @@ const Projetos: React.FC = () => {
         {showModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-              <h2 className="text-2xl font-bold mb-4">{editingProjeto ? 'Editar Projeto' : 'Novo Projeto'}</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">{editingProjeto ? 'Editar Projeto' : 'Novo Projeto'}</h2>
+                <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">
+                  <X size={24} />
+                </button>
+              </div>
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Nome</label>
