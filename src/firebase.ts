@@ -14,7 +14,8 @@ import {
   deleteDoc,
   doc,
   Timestamp,
-  setDoc
+  setDoc,
+  getDoc
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -58,5 +59,6 @@ export {
   deleteDoc,
   doc,
   Timestamp,
-  setDoc
+  setDoc,
+  getDoc
 };
