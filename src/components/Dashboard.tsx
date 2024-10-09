@@ -22,7 +22,6 @@ const Dashboard: React.FC = () => {
     const newTotalGoal = Object.values(goals).reduce((sum, value) => sum + value, 0);
     setTotalGoal(newTotalGoal);
     
-    // Cálculo do progresso total baseado nos progressos individuais
     const newTotalProgress = Object.values(progress).reduce((sum, value) => sum + value, 0) / 3;
     setTotalProgress(newTotalProgress);
   }, [goals, progress]);
@@ -31,7 +30,6 @@ const Dashboard: React.FC = () => {
     setGoals(prev => ({ ...prev, [type]: value }));
   };
 
-  // Função simulada para atualizar o progresso (será substituída pela funcionalidade real posteriormente)
   const updateProgress = (type: keyof typeof progress, value: number) => {
     setProgress(prev => ({ ...prev, [type]: value }));
   };
@@ -63,7 +61,6 @@ const Dashboard: React.FC = () => {
           Salvar Meta
         </button>
       </div>
-      {/* Botão temporário para simular atualização de progresso */}
       <button 
         onClick={() => updateProgress(type, Math.min(progress[type] + 10, 100))}
         className="mt-2 bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 w-full"
@@ -95,9 +92,9 @@ const Dashboard: React.FC = () => {
   );
 
   return (
-    <div className="flex">
+    <div className="flex h-screen bg-gray-100">
       <Sidebar />
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-8 overflow-auto">
         <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
         <p className="text-gray-600 mb-6">Resumo das atividades</p>
         
