@@ -111,103 +111,78 @@ const Monitorias: React.FC = () => {
   };
 
   return (
-    <div className="flex bg-gray-100 min-h-screen">
+    <div className="flex">
       <Sidebar />
       <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Monitorias</h1>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
-            >
-              <Plus size={20} className="mr-2" />
-              Nova Monitoria
-            </button>
-          </div>
-          
-          <div className="mb-6">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Buscar por colaborador ou tipo"
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
-            </div>
-          </div>
-
-          <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colaborador</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nota Média</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMonitorias.map((monitoria) => (
-                  <tr key={monitoria.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">{monitoria.colaboradorNome}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        monitoria.tipo === 'Ligação' ? 'bg-blue-100 text-blue-800' :
-                        monitoria.tipo === 'E-mail' ? 'bg-green-100 text-green-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {monitoria.tipo}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        monitoria.notaMedia >= 90 ? 'bg-green-100 text-green-800' :
-                        monitoria.notaMedia >= 70 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {monitoria.notaMedia.toFixed(2)}%
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleEditClick(monitoria)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        <Edit size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(monitoria)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <h1 className="text-2xl font-bold mb-4">Monitorias</h1>
+        
+        <div className="mb-4 flex items-center space-x-4">
+          <input
+            type="text"
+            placeholder="Buscar por colaborador ou tipo"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="border rounded px-2 py-1 flex-grow"
+          />
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-emerald-500 text-white px-4 py-2 rounded hover:bg-emerald-600 flex items-center"
+          >
+            <Plus size={20} className="mr-2" />
+            Nova Monitoria
+          </button>
         </div>
 
+        <table className="min-w-full bg-white">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="py-2 px-4 border-b text-left">Colaborador</th>
+              <th className="py-2 px-4 border-b text-left">Tipo</th>
+              <th className="py-2 px-4 border-b text-left">Data</th>
+              <th className="py-2 px-4 border-b text-left">Nota Média</th>
+              <th className="py-2 px-4 border-b text-left">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredMonitorias.map((monitoria) => (
+              <tr key={monitoria.id}>
+                <td className="py-2 px-4 border-b">{monitoria.colaboradorNome}</td>
+                <td className="py-2 px-4 border-b">{monitoria.tipo}</td>
+                <td className="py-2 px-4 border-b">{new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}</td>
+                <td className="py-2 px-4 border-b">{monitoria.notaMedia.toFixed(2)}%</td>
+                <td className="py-2 px-4 border-b">
+                  <button
+                    onClick={() => handleEditClick(monitoria)}
+                    className="text-blue-500 hover:text-blue-700 mr-2"
+                  >
+                    <Edit size={20} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(monitoria)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
         {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-              <h2 className="text-2xl font-bold mb-4">Nova Monitoria</h2>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <h3 className="text-lg font-bold mb-4">Nova Monitoria</h3>
               <div className="mb-4">
                 <input
                   type="text"
                   placeholder="Buscar colaborador"
                   value={colaboradorSearch}
                   onChange={(e) => setColaboradorSearch(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="border rounded px-2 py-1 w-full"
                 />
                 {colaboradorSearch.length > 0 && (
-                  <ul className="mt-2 max-h-40 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-sm">
+                  <ul className="mt-2 max-h-40 overflow-y-auto">
                     {colaboradores
                       .filter(colaborador => 
                         colaborador.nome.toLowerCase().includes(colaboradorSearch.toLowerCase())
@@ -229,33 +204,33 @@ const Monitorias: React.FC = () => {
                 )}
               </div>
               <div className="mb-4">
-                <h3 className="text-lg font-medium mb-2">Tipo de Monitoria</h3>
-                <div className="grid grid-cols-3 gap-2">
+                <h4 className="text-sm font-medium mb-2">Tipo de Monitoria</h4>
+                <div className="flex space-x-2">
                   <button
                     onClick={() => setTipoMonitoria('Ligação')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-lg ${
-                      tipoMonitoria === 'Ligação' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'
-                    } transition-colors duration-200`}
+                    className={`flex-1 py-2 px-4 rounded ${
+                      tipoMonitoria === 'Ligação' ? 'bg-emerald-500 text-white' : 'bg-gray-200'
+                    }`}
                   >
-                    <Phone size={24} className="mb-2" />
+                    <Phone size={24} className="mx-auto mb-1" />
                     Ligação
                   </button>
                   <button
                     onClick={() => setTipoMonitoria('E-mail')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-lg ${
-                      tipoMonitoria === 'E-mail' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'
-                    } transition-colors duration-200`}
+                    className={`flex-1 py-2 px-4 rounded ${
+                      tipoMonitoria === 'E-mail' ? 'bg-emerald-500 text-white' : 'bg-gray-200'
+                    }`}
                   >
-                    <Mail size={24} className="mb-2" />
+                    <Mail size={24} className="mx-auto mb-1" />
                     E-mail
                   </button>
                   <button
                     onClick={() => setTipoMonitoria('Chat')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-lg ${
-                      tipoMonitoria === 'Chat' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'
-                    } transition-colors duration-200`}
+                    className={`flex-1 py-2 px-4 rounded ${
+                      tipoMonitoria === 'Chat' ? 'bg-emerald-500 text-white' : 'bg-gray-200'
+                    }`}
                   >
-                    <MessageSquare size={24} className="mb-2" />
+                    <MessageSquare size={24} className="mx-auto mb-1" />
                     Chat
                   </button>
                 </div>
@@ -263,13 +238,13 @@ const Monitorias: React.FC = () => {
               <div className="flex justify-end space-x-2">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleNovaMonitoria}
-                  className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors duration-200"
+                  className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600"
                   disabled={!selectedColaborador || !tipoMonitoria}
                 >
                   Iniciar Monitoria
@@ -280,28 +255,32 @@ const Monitorias: React.FC = () => {
         )}
 
         {showDeleteModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-              <div className="flex items-center justify-center mb-4">
-                <AlertTriangle className="h-12 w-12 text-red-500" />
-              </div>
-              <h3 className="text-lg font-bold text-center mb-4">Excluir Monitoria</h3>
-              <p className="text-center mb-6">
-                Tem certeza que deseja excluir esta monitoria? Esta ação não pode ser desfeita.
-              </p>
-              <div className="flex justify-center space-x-4">
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
-                >
-                  Excluir
-                </button>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3 text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mt-4">Excluir Monitoria</h3>
+                <div className="mt-2 px-7 py-3">
+                  <p className="text-sm text-gray-500">
+                    Tem certeza que deseja excluir esta monitoria? Esta ação não pode ser desfeita.
+                  </p>
+                </div>
+                <div className="items-center px-4 py-3">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md mr-2 hover:bg-gray-400"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
             </div>
           </div>

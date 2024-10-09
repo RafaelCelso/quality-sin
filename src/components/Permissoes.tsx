@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
-import { Shield, Save, User, Users, FileText, Trash2, Settings, Briefcase, FolderOpen, BookOpen, AlertCircle, Check } from 'lucide-react';
+import { Shield, Save, User, Users, FileText, Trash2, Settings } from 'lucide-react';
 import { db, collection, getDocs, doc, updateDoc } from '../firebase';
 
 interface Permissao {
@@ -31,18 +31,6 @@ const Permissoes: React.FC = () => {
     { nome: 'Editar Usuário', icon: <User size={20} /> },
     { nome: 'Excluir Usuário', icon: <Trash2 size={20} /> },
     { nome: 'Gerenciar Permissões', icon: <Settings size={20} /> },
-    { nome: 'Visualizar Cargos', icon: <Briefcase size={20} /> },
-    { nome: 'Criar Cargo', icon: <Briefcase size={20} /> },
-    { nome: 'Editar Cargo', icon: <Briefcase size={20} /> },
-    { nome: 'Excluir Cargo', icon: <Trash2 size={20} /> },
-    { nome: 'Visualizar Projetos', icon: <FolderOpen size={20} /> },
-    { nome: 'Criar Projeto', icon: <FolderOpen size={20} /> },
-    { nome: 'Editar Projeto', icon: <FolderOpen size={20} /> },
-    { nome: 'Excluir Projeto', icon: <Trash2 size={20} /> },
-    { nome: 'Acessar Perfil', icon: <User size={20} /> },
-    { nome: 'Editar Perfil', icon: <User size={20} /> },
-    { nome: 'Visualizar Documentação', icon: <BookOpen size={20} /> },
-    { nome: 'Visualizar Treinamentos', icon: <BookOpen size={20} /> },
   ];
 
   useEffect(() => {
@@ -53,8 +41,11 @@ const Permissoes: React.FC = () => {
     try {
       const permissoesRef = collection(db, 'permissoes');
       const snapshot = await getDocs(permissoesRef);
-      const fetchedPermissoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Permissao));
-      setPermissoes(fetchedPermissoes);
+      const permissoesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Permissao[];
+      setPermissoes(permissoesData);
       setLoading(false);
     } catch (error) {
       console.error('Erro ao buscar permissões:', error);
@@ -73,14 +64,15 @@ const Permissoes: React.FC = () => {
     );
   };
 
-  const handleSave = async () => {
+  const salvarPermissoes = async () => {
+    setSuccessMessage('');
+    setErrorMessage('');
     try {
       for (const permissao of permissoes) {
         const permissaoRef = doc(db, 'permissoes', permissao.id);
         await updateDoc(permissaoRef, { acessos: permissao.acessos });
       }
-      setSuccessMessage('Permissões salvas com sucesso!');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      setSuccessMessage('Permissões atualizadas com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar permissões:', error);
       setErrorMessage('Erro ao salvar permissões. Por favor, tente novamente.');
@@ -89,8 +81,12 @@ const Permissoes: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-emerald-500"></div>
+      <div className="flex">
+        <Sidebar />
+        <div className="flex-1 p-8">
+          <h1 className="text-2xl font-bold mb-4">Permissões</h1>
+          <p>Carregando...</p>
+        </div>
       </div>
     );
   }
@@ -99,77 +95,54 @@ const Permissoes: React.FC = () => {
     <div className="flex bg-gray-100 min-h-screen">
       <Sidebar />
       <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Gerenciar Permissões</h1>
-            <button
-              onClick={handleSave}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
-            >
-              <Save size={20} className="mr-2" />
-              Salvar Alterações
-            </button>
+        <h1 className="text-3xl font-bold mb-6 flex items-center text-gray-800">
+          <Shield className="mr-2 text-emerald-600" size={32} />
+          Gerenciamento de Permissões
+        </h1>
+        {successMessage && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span className="block sm:inline">{successMessage}</span>
           </div>
-
-          {successMessage && (
-            <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-lg shadow-md flex items-center">
-              <Check className="mr-2" size={24} />
-              <p>{successMessage}</p>
-            </div>
-          )}
-
-          {errorMessage && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg shadow-md flex items-center">
-              <AlertCircle className="mr-2" size={24} />
-              <p>{errorMessage}</p>
-            </div>
-          )}
-
-          <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Permissão</th>
-                    {permissoes.map(permissao => (
-                      <th key={permissao.id} className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{permissao.nome}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {acessos.map(acesso => (
-                    <tr key={acesso.nome} className="hover:bg-gray-50 transition duration-150 ease-in-out">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-emerald-100 rounded-full">
-                            {acesso.icon}
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{acesso.nome}</div>
-                          </div>
-                        </div>
-                      </td>
-                      {permissoes.map(permissao => (
-                        <td key={`${permissao.id}-${acesso.nome}`} className="px-6 py-4 whitespace-nowrap text-center">
-                          <label className="inline-flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={permissao.acessos[acesso.nome] || false}
-                              onChange={(e) => handlePermissaoChange(permissao.id, acesso.nome, e.target.checked)}
-                              className="form-checkbox h-5 w-5 text-emerald-600 transition duration-150 ease-in-out"
-                            />
-                            <span className="ml-2 text-sm text-gray-600">
-                              {permissao.acessos[acesso.nome] ? 'Permitido' : 'Bloqueado'}
-                            </span>
-                          </label>
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        )}
+        {errorMessage && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span className="block sm:inline">{errorMessage}</span>
           </div>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          {permissoes.map(permissao => (
+            <div key={permissao.id} className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800">{permissao.nome}</h2>
+              <div className="space-y-4">
+                {acessos.map(acesso => (
+                  <div key={acesso.nome} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      {acesso.icon}
+                      <span className="ml-2 text-gray-700">{acesso.nome}</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={permissao.acessos[acesso.nome] || false}
+                        onChange={(e) => handlePermissaoChange(permissao.id, acesso.nome, e.target.checked)}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={salvarPermissoes}
+            className="bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition duration-300 ease-in-out flex items-center text-lg font-semibold shadow-md"
+          >
+            <Save size={24} className="mr-2" />
+            Salvar Alterações
+          </button>
         </div>
       </div>
     </div>

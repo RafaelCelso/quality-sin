@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
 import { Eye, EyeOff } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
 
 const Signup: React.FC = () => {
   const [name, setName] = useState('');
@@ -12,36 +11,21 @@ const Signup: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
     if (password !== confirmPassword) {
-      setError("As senhas não coincidem");
+      alert("As senhas não coincidem");
       return;
     }
-
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Adicionar o novo usuário à coleção 'usuarios' no Firestore
-      await addDoc(collection(db, 'usuarios'), {
-        uid: user.uid,
-        nome: name,
-        email: email,
-        permissao: 'Assistente', // Definindo uma permissão padrão
-        cargo: 'Assistente', // Definindo um cargo padrão
-        colaboradorId: user.uid, // Usando o UID do usuário como colaboradorId
-      });
-
+      await createUserWithEmailAndPassword(auth, email, password);
+      // TODO: Salvar informações adicionais do usuário (nome) no Firestore ou Realtime Database
       navigate('/dashboard');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao criar conta:', error);
-      setError(error.message || 'Erro ao criar conta. Por favor, tente novamente.');
+      // Tratar erro de criação de conta (ex: mostrar mensagem de erro para o usuário)
     }
   };
 
@@ -50,12 +34,7 @@ const Signup: React.FC = () => {
       <div className="w-full max-w-md">
         <img src="/sin-solution-logo.png" alt="SIN Solution Logo" className="mx-auto mb-8 w-32" />
         <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-          <h2 className="text-2xl font-bold mb-6 text-center">Criar Conta</h2>
-          {error && (
-            <div className="mb-4 p-2 rounded bg-red-100 text-red-700">
-              {error}
-            </div>
-          )}
+          <h2 className="text-2xl font-bold mb-6 text-center">Criar conta</h2>
           <form onSubmit={handleSignup}>
             <div className="mb-4">
               <input
@@ -113,16 +92,18 @@ const Signup: React.FC = () => {
             </div>
             <div className="flex items-center justify-between">
               <button
-                className="bg-emerald-500 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                className="bg-emerald-500 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
                 type="submit"
               >
-                Criar Conta
+                Criar conta
               </button>
-              <Link to="/" className="inline-block align-baseline font-bold text-sm text-emerald-500 hover:text-emerald-800">
-                Já tem uma conta?
-              </Link>
             </div>
           </form>
+        </div>
+        <div className="text-center">
+          <Link to="/" className="text-emerald-500 hover:text-emerald-800">
+            Já tem uma conta? Entrar
+          </Link>
         </div>
       </div>
     </div>

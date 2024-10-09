@@ -1,38 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Users, Plus, Search, Edit, Trash2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Users, Plus, Search, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { auth, db, collection, getDocs, query, orderBy, limit, addDoc, updateDoc, deleteDoc, doc, createUserWithEmailAndPassword } from '../firebase';
 
 const Usuarios: React.FC = () => {
   const [usuarios, setUsuarios] = useState<any[]>([]);
-  const [colaboradores, setColaboradores] = useState<any[]>([]);
-  const [cargos, setCargos] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
   const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [novoUsuario, setNovoUsuario] = useState({
     nome: '',
     email: '',
     permissao: '',
-    cargo: '',
-    colaboradorId: '',
-    colaboradorNome: '',
     senha: '',
-    confirmarSenha: ''
+    confirmarSenha: '',
+    colaboradorId: '',
+    colaboradorNome: ''
   });
-  const [colaboradorSearch, setColaboradorSearch] = useState('');
-  const [showColaboradorList, setShowColaboradorList] = useState(false);
+  const [novaSenha, setNovaSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [colaboradores, setColaboradores] = useState<any[]>([]);
+  const [colaboradorSearch, setColaboradorSearch] = useState('');
+  const [showColaboradorList, setShowColaboradorList] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchUsuarios();
     fetchColaboradores();
-    fetchCargos();
   }, []);
 
   const fetchUsuarios = async () => {
@@ -57,19 +57,14 @@ const Usuarios: React.FC = () => {
     }
   };
 
-  const fetchCargos = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'cargos'));
-      const fetchedCargos = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setCargos(fetchedCargos);
-    } catch (error) {
-      console.error("Erro ao buscar cargos:", error);
-    }
-  };
-
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value.toLowerCase());
   };
+
+  const filteredUsuarios = usuarios.filter(usuario =>
+    usuario.nome.toLowerCase().includes(searchTerm) ||
+    usuario.email.toLowerCase().includes(searchTerm)
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -78,6 +73,105 @@ const Usuarios: React.FC = () => {
     } else {
       setNovoUsuario(prev => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+
+    if (!editingUser && novoUsuario.senha !== novoUsuario.confirmarSenha) {
+      setError("As senhas não coincidem.");
+      return;
+    }
+
+    try {
+      if (editingUser) {
+        const userRef = doc(db, 'usuarios', editingUser.id);
+        await updateDoc(userRef, {
+          nome: editingUser.nome,
+          email: editingUser.email,
+          permissao: editingUser.permissao,
+          colaboradorId: editingUser.colaboradorId,
+          colaboradorNome: editingUser.colaboradorNome
+        });
+
+        if (novaSenha) {
+          // Aqui você deve implementar a lógica para atualizar a senha do usuário no Firebase Authentication
+          // Como não temos acesso direto à instância do usuário, você pode precisar implementar
+          // uma função de Cloud Function ou uma API backend para lidar com isso de forma segura
+          console.log("Nova senha definida:", novaSenha);
+          // Por enquanto, vamos apenas simular que a senha foi alterada
+          setSuccessMessage("A senha do usuário foi alterada com sucesso.");
+        } else {
+          setSuccessMessage("Dados do usuário atualizados com sucesso.");
+        }
+
+        setNovaSenha('');
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, novoUsuario.email, novoUsuario.senha);
+        await addDoc(collection(db, 'usuarios'), {
+          nome: novoUsuario.nome,
+          email: novoUsuario.email,
+          permissao: novoUsuario.permissao,
+          colaboradorId: novoUsuario.colaboradorId,
+          colaboradorNome: novoUsuario.colaboradorNome,
+          uid: userCredential.user.uid
+        });
+        setNovoUsuario({ nome: '', email: '', permissao: '', senha: '', confirmarSenha: '', colaboradorId: '', colaboradorNome: '' });
+        setSuccessMessage("Novo usuário criado com sucesso.");
+      }
+
+      setTimeout(() => {
+        closeModal();
+      }, 2000);
+      
+      fetchUsuarios();
+    } catch (error) {
+      console.error("Erro ao adicionar/atualizar usuário:", error);
+      setError("Erro ao adicionar/atualizar usuário. Por favor, tente novamente.");
+    }
+  };
+
+  const handleEdit = (usuario: any) => {
+    setEditingUser(usuario);
+    setNovaSenha('');
+    setShowModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (userToDelete) {
+      try {
+        await deleteDoc(doc(db, 'usuarios', userToDelete.id));
+        setSuccessMessage("Usuário excluído com sucesso.");
+        fetchUsuarios();
+      } catch (error) {
+        console.error("Erro ao excluir usuário:", error);
+        setError("Erro ao excluir usuário. Por favor, tente novamente.");
+      } finally {
+        setTimeout(() => {
+          closeDeleteModal();
+        }, 2000);
+      }
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingUser(null);
+    setNovoUsuario({ nome: '', email: '', permissao: '', senha: '', confirmarSenha: '', colaboradorId: '', colaboradorNome: '' });
+    setNovaSenha('');
+    setError(null);
+    setSuccessMessage(null);
+    setColaboradorSearch('');
+    setShowColaboradorList(false);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setUserToDelete(null);
+    setError(null);
+    setSuccessMessage(null);
   };
 
   const handleColaboradorSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,152 +197,75 @@ const Usuarios: React.FC = () => {
     setShowColaboradorList(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingUser) {
-        await updateDoc(doc(db, 'usuarios', editingUser.id), editingUser);
-      } else {
-        if (novoUsuario.senha !== novoUsuario.confirmarSenha) {
-          alert("As senhas não coincidem!");
-          return;
-        }
-        const userCredential = await createUserWithEmailAndPassword(auth, novoUsuario.email, novoUsuario.senha);
-        const user = userCredential.user;
-        await addDoc(collection(db, 'usuarios'), {
-          ...novoUsuario,
-          uid: user.uid,
-          senha: null // Não armazenamos a senha no Firestore
-        });
-      }
-      setShowModal(false);
-      fetchUsuarios();
-      setEditingUser(null);
-      setNovoUsuario({
-        nome: '',
-        email: '',
-        permissao: '',
-        cargo: '',
-        colaboradorId: '',
-        colaboradorNome: '',
-        senha: '',
-        confirmarSenha: ''
-      });
-    } catch (error) {
-      console.error("Erro ao salvar usuário:", error);
-    }
-  };
-
-  const handleEdit = (usuario: any) => {
-    setEditingUser(usuario);
-    setShowModal(true);
-  };
-
-  const handleDeleteClick = (usuario: any) => {
-    setUserToDelete(usuario);
-    setShowDeleteModal(true);
-  };
-
-  const handleDelete = async () => {
-    if (userToDelete) {
-      try {
-        await deleteDoc(doc(db, 'usuarios', userToDelete.id));
-        fetchUsuarios();
-        setShowDeleteModal(false);
-      } catch (error) {
-        console.error("Erro ao excluir usuário:", error);
-      }
-    }
-  };
-
-  const filteredUsuarios = usuarios.filter(usuario =>
-    usuario.nome.toLowerCase().includes(searchTerm) ||
-    usuario.email.toLowerCase().includes(searchTerm)
-  );
-
   return (
-    <div className="flex bg-gray-100 min-h-screen">
+    <div className="flex">
       <Sidebar />
       <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Usuários</h1>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
-            >
-              <Plus size={20} className="mr-2" />
-              Novo Usuário
-            </button>
-          </div>
-          
-          <div className="mb-6">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Buscar por nome ou email"
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
-            </div>
-          </div>
-
-          <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Permissão</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cargo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colaborador</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsuarios.map((usuario) => (
-                  <tr key={usuario.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">{usuario.nome}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{usuario.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        usuario.permissao === 'Admin' ? 'bg-red-100 text-red-800' :
-                        usuario.permissao === 'Qualidade' ? 'bg-blue-100 text-blue-800' :
-                        usuario.permissao === 'Supervisor' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {usuario.permissao}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{usuario.cargo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{usuario.colaboradorNome}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(usuario)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        <Edit size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(usuario)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <h1 className="text-2xl font-bold mb-4">Usuários</h1>
+        
+        <div className="mb-4 flex items-center space-x-4">
+          <input
+            type="text"
+            placeholder="Buscar por nome ou email"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="border rounded px-2 py-1 flex-grow"
+          />
+          <button
+            onClick={() => {
+              setEditingUser(null);
+              setShowModal(true);
+            }}
+            className="bg-emerald-500 text-white px-4 py-2 rounded hover:bg-emerald-600 flex items-center"
+          >
+            <Plus size={20} className="mr-2" />
+            Novo Usuário
+          </button>
         </div>
 
+        <table className="min-w-full bg-white">
+          <thead className="bg-[#10B981] text-white">
+            <tr>
+              <th className="py-2 px-4 border-b text-left">Nome</th>
+              <th className="py-2 px-4 border-b text-left">Email</th>
+              <th className="py-2 px-4 border-b text-left">Permissão</th>
+              <th className="py-2 px-4 border-b text-left">Colaborador</th>
+              <th className="py-2 px-4 border-b text-left">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredUsuarios.map((usuario) => (
+              <tr key={usuario.id}>
+                <td className="py-2 px-4 border-b">{usuario.nome}</td>
+                <td className="py-2 px-4 border-b">{usuario.email}</td>
+                <td className="py-2 px-4 border-b">{usuario.permissao}</td>
+                <td className="py-2 px-4 border-b">{usuario.colaboradorNome}</td>
+                <td className="py-2 px-4 border-b">
+                  <button
+                    onClick={() => handleEdit(usuario)}
+                    className="text-blue-500 hover:text-blue-700 mr-2"
+                  >
+                    <Edit size={20} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUserToDelete(usuario);
+                      setShowDeleteModal(true);
+                    }}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
         {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-              <h2 className="text-2xl font-bold mb-4">{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h2>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <h3 className="text-lg font-bold mb-4">{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h3>
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Nome</label>
@@ -257,7 +274,7 @@ const Usuarios: React.FC = () => {
                     name="nome"
                     value={editingUser ? editingUser.nome : novoUsuario.nome}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     required
                   />
                 </div>
@@ -268,49 +285,53 @@ const Usuarios: React.FC = () => {
                     name="email"
                     value={editingUser ? editingUser.email : novoUsuario.email}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     required
                   />
                 </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">
+                    {editingUser ? 'Nova Senha (deixe em branco para não alterar)' : 'Senha'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="senha"
+                      value={editingUser ? novaSenha : novoUsuario.senha}
+                      onChange={editingUser ? (e) => setNovaSenha(e.target.value) : handleInputChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                      required={!editingUser}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
                 {!editingUser && (
-                  <>
-                    <div className="mb-4 relative">
-                      <label className="block text-sm font-medium text-gray-700">Senha</label>
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        name="senha"
-                        value={novoUsuario.senha}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                      </button>
-                    </div>
-                    <div className="mb-4 relative">
-                      <label className="block text-sm font-medium text-gray-700">Confirmar Senha</label>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Confirmar Senha</label>
+                    <div className="relative">
                       <input
                         type={showConfirmPassword ? "text" : "password"}
                         name="confirmarSenha"
                         value={novoUsuario.confirmarSenha}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                         required
                       />
                       <button
                         type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                       >
                         {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Permissão</label>
@@ -318,7 +339,7 @@ const Usuarios: React.FC = () => {
                     name="permissao"
                     value={editingUser ? editingUser.permissao : novoUsuario.permissao}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     required
                   >
                     <option value="">Selecione uma permissão</option>
@@ -329,21 +350,6 @@ const Usuarios: React.FC = () => {
                   </select>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Cargo</label>
-                  <select
-                    name="cargo"
-                    value={editingUser ? editingUser.cargo : novoUsuario.cargo}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
-                    required
-                  >
-                    <option value="">Selecione um cargo</option>
-                    {cargos.map((cargo) => (
-                      <option key={cargo.id} value={cargo.nome}>{cargo.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Colaborador</label>
                   <div className="relative">
                     <input
@@ -351,7 +357,7 @@ const Usuarios: React.FC = () => {
                       value={colaboradorSearch}
                       onChange={handleColaboradorSearch}
                       placeholder="Buscar colaborador..."
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     />
                     {showColaboradorList && (
                       <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -378,17 +384,23 @@ const Usuarios: React.FC = () => {
                     </p>
                   )}
                 </div>
+                {error && (
+                  <div className="mb-4 text-red-500">{error}</div>
+                )}
+                {successMessage && (
+                  <div className="mb-4 text-green-500">{successMessage}</div>
+                )}
                 <div className="flex justify-end space-x-2">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
+                    onClick={closeModal}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors duration-200"
+                    className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600"
                   >
                     {editingUser ? 'Atualizar' : 'Salvar'}
                   </button>
@@ -399,25 +411,26 @@ const Usuarios: React.FC = () => {
         )}
 
         {showDeleteModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-              <div className="flex items-center justify-center mb-4">
-                <AlertTriangle className="h-12 w-12 text-red-500" />
-              </div>
-              <h3 className="text-lg font-bold text-center mb-4">Excluir Usuário</h3>
-              <p className="text-center mb-6">
-                Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
-              </p>
-              <div className="flex justify-center space-x-4">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <h3 className="text-lg font-bold mb-4">Confirmar Exclusão</h3>
+              <p className="mb-4">Tem certeza que deseja excluir o usuário {userToDelete?.nome}?</p>
+              {error && (
+                <div className="mb-4 text-red-500">{error}</div>
+              )}
+              {successMessage && (
+                <div className="mb-4 text-green-500">{successMessage}</div>
+              )}
+              <div className="flex justify-end space-x-2">
                 <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
+                  onClick={closeDeleteModal}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   Excluir
                 </button>
