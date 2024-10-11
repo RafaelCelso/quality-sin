@@ -4,7 +4,66 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const initializePermissions = async () => {
   const permissoes = [
-    // ... (mantenha o array de permissões como estava)
+    {
+      id: 'admin',
+      nome: 'Admin',
+      acessos: {
+        'Visualizar Dashboard': true,
+        'Criar Monitoria': true,
+        'Editar Monitoria': true,
+        'Excluir Monitoria': true,
+        'Visualizar Monitoria': true,
+        'Visualizar Colaboradores': true,
+        'Criar Colaborador': true,
+        'Editar Colaborador': true,
+        'Excluir Colaborador': true,
+        'Visualizar Usuários': true,
+        'Criar Usuário': true,
+        'Editar Usuário': true,
+        'Excluir Usuário': true,
+        'Gerenciar Permissões': true,
+        'Visualizar Cargos': true,
+        'Criar Cargo': true,
+        'Editar Cargo': true,
+        'Excluir Cargo': true,
+        'Visualizar Projetos': true,
+        'Criar Projeto': true,
+        'Editar Projeto': true,
+        'Excluir Projeto': true,
+        'Acessar Perfil': true,
+        'Editar Perfil': true,
+      }
+    },
+    {
+      id: 'assistente',
+      nome: 'Assistente',
+      acessos: {
+        'Visualizar Dashboard': false,
+        'Criar Monitoria': false,
+        'Editar Monitoria': false,
+        'Excluir Monitoria': false,
+        'Visualizar Monitoria': true,
+        'Visualizar Colaboradores': false,
+        'Criar Colaborador': false,
+        'Editar Colaborador': false,
+        'Excluir Colaborador': false,
+        'Visualizar Usuários': false,
+        'Criar Usuário': false,
+        'Editar Usuário': false,
+        'Excluir Usuário': false,
+        'Gerenciar Permissões': false,
+        'Visualizar Cargos': false,
+        'Criar Cargo': false,
+        'Editar Cargo': false,
+        'Excluir Cargo': false,
+        'Visualizar Projetos': false,
+        'Criar Projeto': false,
+        'Editar Projeto': false,
+        'Excluir Projeto': false,
+        'Acessar Perfil': true,
+        'Editar Perfil': true,
+      }
+    },
   ];
 
   const permissoesRef = collection(db, 'permissoes');

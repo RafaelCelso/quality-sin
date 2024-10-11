@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Home, PhoneCall, Mail, MessageSquare } from 'lucide-react';
 import Sidebar from './Sidebar';
+import { auth, db, collection, query, where, getDocs, onSnapshot } from '../firebase';
+import usePermissions from '../hooks/usePermissions';
 
 const Dashboard: React.FC = () => {
   const [goals, setGoals] = useState({
@@ -17,21 +19,70 @@ const Dashboard: React.FC = () => {
 
   const [totalGoal, setTotalGoal] = useState(0);
   const [totalProgress, setTotalProgress] = useState(0);
+  const { checkPermission } = usePermissions();
+  const [userPermission, setUserPermission] = useState('');
+
+  useEffect(() => {
+    const fetchUserPermission = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userQuery = query(collection(db, 'usuarios'), where('uid', '==', user.uid));
+        const userSnapshot = await getDocs(userQuery);
+        if (!userSnapshot.empty) {
+          const userData = userSnapshot.docs[0].data();
+          setUserPermission(userData.permissao);
+        }
+      }
+    };
+
+    fetchUserPermission();
+  }, []);
 
   useEffect(() => {
     const newTotalGoal = Object.values(goals).reduce((sum, value) => sum + value, 0);
     setTotalGoal(newTotalGoal);
-    
-    const newTotalProgress = Object.values(progress).reduce((sum, value) => sum + value, 0) / 3;
-    setTotalProgress(newTotalProgress);
-  }, [goals, progress]);
+  }, [goals]);
+
+  useEffect(() => {
+    if (!userPermission) return;
+
+    const monitoriaQuery = query(collection(db, 'monitorias'));
+
+    const unsubscribe = onSnapshot(monitoriaQuery, (snapshot) => {
+      const monitorias = snapshot.docs.map(doc => doc.data());
+      
+      const filteredMonitorias = monitorias.filter(monitoria => {
+        if (userPermission === 'Admin') return true;
+        if (userPermission === 'Qualidade') return monitoria.avaliadorId === auth.currentUser?.uid;
+        if (userPermission === 'Supervisor') return monitoria.supervisorId === auth.currentUser?.uid;
+        return false;
+      });
+
+      const newProgress = {
+        call: 0,
+        email: 0,
+        chat: 0
+      };
+
+      filteredMonitorias.forEach(monitoria => {
+        if (monitoria.tipo === 'Ligação') newProgress.call++;
+        if (monitoria.tipo === 'E-mail') newProgress.email++;
+        if (monitoria.tipo === 'Chat') newProgress.chat++;
+      });
+
+      setProgress(newProgress);
+
+      const totalCompleted = Object.values(newProgress).reduce((sum, value) => sum + value, 0);
+      const totalGoalValue = Object.values(goals).reduce((sum, value) => sum + value, 0);
+      const newTotalProgress = totalGoalValue > 0 ? (totalCompleted / totalGoalValue) * 100 : 0;
+      setTotalProgress(newTotalProgress);
+    });
+
+    return () => unsubscribe();
+  }, [userPermission, goals]);
 
   const handleGoalChange = (type: keyof typeof goals, value: number) => {
     setGoals(prev => ({ ...prev, [type]: value }));
-  };
-
-  const updateProgress = (type: keyof typeof progress, value: number) => {
-    setProgress(prev => ({ ...prev, [type]: value }));
   };
 
   const renderCard = (title: string, icon: React.ReactNode, type: keyof typeof goals) => (
@@ -45,9 +96,9 @@ const Dashboard: React.FC = () => {
       <div className="flex items-center mb-2">
         <span className="mr-2">Progresso</span>
         <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${progress[type]}%` }}></div>
+          <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${(progress[type] / goals[type]) * 100}%` }}></div>
         </div>
-        <span className="ml-2">{progress[type]}%</span>
+        <span className="ml-2">{progress[type]} / {goals[type]}</span>
       </div>
       <div className="flex items-center">
         <input
@@ -61,12 +112,6 @@ const Dashboard: React.FC = () => {
           Salvar Meta
         </button>
       </div>
-      <button 
-        onClick={() => updateProgress(type, Math.min(progress[type] + 10, 100))}
-        className="mt-2 bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 w-full"
-      >
-        Simular Progresso
-      </button>
     </div>
   );
 

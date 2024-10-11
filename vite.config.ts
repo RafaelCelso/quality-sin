@@ -11,5 +11,14 @@ export default defineConfig({
   },
   preview: {
     port: 5173
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
 })

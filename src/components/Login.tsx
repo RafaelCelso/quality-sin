@@ -32,8 +32,8 @@ const Login: React.FC = () => {
           localStorage.setItem('userPermissao', permissao);
           localStorage.setItem('userCargo', cargo);
 
-          if (permissao === 'Assistente' && cargo === 'Assistente') {
-            navigate('/assistente');
+          if (permissao === 'Assistente') {
+            navigate('/monitorias');
           } else {
             navigate('/dashboard');
           }

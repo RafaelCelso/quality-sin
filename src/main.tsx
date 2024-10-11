@@ -4,7 +4,7 @@ import App from './App.tsx'
 import './index.css'
 import initializePermissions from './utils/initializePermissions'
 
-initializePermissions() // Adicione esta linha
+initializePermissions()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

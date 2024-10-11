@@ -4,11 +4,13 @@ import Sidebar from './Sidebar';
 import { db, collection, addDoc, updateDoc, doc, Timestamp } from '../firebase';
 import { Phone, Star, Clock, Calendar, MessageSquare, Heart, Target, User, CheckCircle, AlertCircle, HelpCircle, Smile, Shield, BookOpen, UserCheck, Flag, Zap } from 'lucide-react';
 import InputMask from 'react-input-mask';
+import usePermissions from '../hooks/usePermissions';
 
 const MonitoriaLigacao: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { colaborador, tipoMonitoria, monitoria, isEditing } = location.state || {};
+  const { monitoria, isEditing, isViewing } = location.state || {};
+  const { checkPermission } = usePermissions();
 
   const [formData, setFormData] = useState({
     colaboradorNome: '',
@@ -31,29 +33,19 @@ const MonitoriaLigacao: React.FC = () => {
   });
 
   useEffect(() => {
-    if (colaborador) {
-      setFormData(prev => ({
-        ...prev,
-        colaboradorNome: colaborador.nome,
-        colaboradorId: colaborador.id
-      }));
-    }
     if (monitoria) {
       setFormData(monitoria);
     }
-  }, [colaborador, monitoria]);
-
-  useEffect(() => {
-    const novaNotaMedia = calcularNotaMedia();
-    setFormData(prev => ({ ...prev, notaMedia: novaNotaMedia }));
-  }, [formData.cordialidade.nota, formData.linguagem.nota, formData.efetividade.nota, formData.personalizacao.nota]);
+  }, [monitoria]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    if (isViewing) return;
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleCriterioChange = (criterio: string, field: 'nota' | 'comentario', value: string | number) => {
+    if (isViewing) return;
     setFormData(prev => ({
       ...prev,
       [criterio]: { ...prev[criterio as keyof typeof prev], [field]: value }
@@ -62,6 +54,7 @@ const MonitoriaLigacao: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isViewing) return;
     try {
       const monitoriaData = {
         ...formData,
@@ -89,7 +82,7 @@ const MonitoriaLigacao: React.FC = () => {
       formData.personalizacao.nota
     ];
     const soma = notas.reduce((acc, nota) => acc + Number(nota), 0);
-    return (soma / notas.length) * 20; // Multiplicamos por 20 para converter a escala de 1-5 para 0-100
+    return (soma / notas.length) * 20;
   };
 
   const handleCancel = () => {
@@ -122,7 +115,9 @@ const MonitoriaLigacao: React.FC = () => {
     <div className="flex">
       <Sidebar />
       <div className="flex-1 p-8 bg-gray-100">
-        <h1 className="text-2xl font-bold mb-6">Monitoria de Ligação</h1>
+        <h1 className="text-2xl font-bold mb-6">
+          {isViewing ? 'Visualizar' : isEditing ? 'Editar' : 'Nova'} Monitoria de Ligação
+        </h1>
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h2 className="text-xl font-semibold mb-4">{formData.colaboradorNome}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -158,6 +153,7 @@ const MonitoriaLigacao: React.FC = () => {
                   onChange={handleInputChange}
                   className="focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
                   placeholder="HH:MM:SS"
+                  disabled={isViewing}
                 />
               </div>
             </div>
@@ -173,6 +169,7 @@ const MonitoriaLigacao: React.FC = () => {
                   value={formData.dataHora}
                   onChange={handleInputChange}
                   className="focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                  disabled={isViewing}
                 />
               </div>
             </div>
@@ -194,6 +191,7 @@ const MonitoriaLigacao: React.FC = () => {
                     value={formData[criterio.key as keyof typeof formData].nota}
                     onChange={(e) => handleCriterioChange(criterio.key, 'nota', e.target.value)}
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                    disabled={isViewing}
                   >
                     <option value="">Selecione uma nota</option>
                     {[1, 2, 3, 4, 5].map((nota) => (
@@ -207,6 +205,7 @@ const MonitoriaLigacao: React.FC = () => {
                     placeholder="Comentário"
                     className="mt-2 block w-full px-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
                     rows={3}
+                    disabled={isViewing}
                   />
                 </div>
               ))}
@@ -227,6 +226,7 @@ const MonitoriaLigacao: React.FC = () => {
                     value={formData[item.key as keyof typeof formData].nota}
                     onChange={(e) => handleCriterioChange(item.key, 'nota', e.target.value)}
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                    disabled={isViewing}
                   >
                     <option value="">Selecione uma opção</option>
                     <option value="Realizado">Realizado</option>
@@ -240,6 +240,7 @@ const MonitoriaLigacao: React.FC = () => {
                     placeholder="Comentário"
                     className="mt-2 block w-full px-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
                     rows={3}
+                    disabled={isViewing}
                   />
                 </div>
               ))}
@@ -255,24 +256,27 @@ const MonitoriaLigacao: React.FC = () => {
               placeholder="Digite seu feedback geral aqui..."
               className="mt-1 block w-full px-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
               rows={5}
+              disabled={isViewing}
             />
           </div>
 
-          <div className="flex justify-end space-x-4">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
-            >
-              {isEditing ? 'Atualizar Monitoria' : 'Salvar Monitoria'}
-            </button>
-          </div>
+          {!isViewing && (
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
+              >
+                {isEditing ? 'Atualizar Monitoria' : 'Salvar Monitoria'}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from '../firebase';
+import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from '../firebase';
 import { Plus, Edit, Trash2, AlertTriangle, X } from 'lucide-react';
 import usePermissions from '../hooks/usePermissions';
 
@@ -9,11 +9,12 @@ const Projetos: React.FC = () => {
   const navigate = useNavigate();
   const { checkPermission, loading: permissionsLoading } = usePermissions();
   const [projetos, setProjetos] = useState<any[]>([]);
+  const [supervisores, setSupervisores] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingProjeto, setEditingProjeto] = useState<any>(null);
   const [projetoToDelete, setProjetoToDelete] = useState<any>(null);
-  const [novoProjeto, setNovoProjeto] = useState({ nome: '', descricao: '' });
+  const [novoProjeto, setNovoProjeto] = useState({ nome: '', descricao: '', supervisorId: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +22,7 @@ const Projetos: React.FC = () => {
     if (!permissionsLoading) {
       if (checkPermission('Visualizar Projetos')) {
         fetchProjetos();
+        fetchSupervisores();
       } else {
         navigate('/');
       }
@@ -40,7 +42,19 @@ const Projetos: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const fetchSupervisores = async () => {
+    try {
+      const supervisoresQuery = query(collection(db, 'usuarios'), where('cargo', '==', 'Supervisor'));
+      const querySnapshot = await getDocs(supervisoresQuery);
+      const fetchedSupervisores = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setSupervisores(fetchedSupervisores);
+    } catch (error) {
+      console.error("Erro ao buscar supervisores:", error);
+      setError("Erro ao carregar supervisores. Por favor, tente novamente.");
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (editingProjeto) {
       setEditingProjeto(prev => ({ ...prev, [name]: value }));
@@ -60,7 +74,7 @@ const Projetos: React.FC = () => {
       setShowModal(false);
       fetchProjetos();
       setEditingProjeto(null);
-      setNovoProjeto({ nome: '', descricao: '' });
+      setNovoProjeto({ nome: '', descricao: '', supervisorId: '' });
     } catch (error) {
       console.error("Erro ao salvar projeto:", error);
       setError("Erro ao salvar projeto. Por favor, tente novamente.");
@@ -119,6 +133,7 @@ const Projetos: React.FC = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
@@ -127,6 +142,9 @@ const Projetos: React.FC = () => {
                   <tr key={projeto.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">{projeto.nome}</td>
                     <td className="px-6 py-4">{projeto.descricao}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {supervisores.find(s => s.id === projeto.supervisorId)?.nome || 'Não atribuído'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => handleEdit(projeto)}
@@ -182,6 +200,21 @@ const Projetos: React.FC = () => {
                     rows={3}
                     required
                   />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Supervisor</label>
+                  <select
+                    name="supervisorId"
+                    value={editingProjeto ? editingProjeto.supervisorId : novoProjeto.supervisorId}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                    required
+                  >
+                    <option value="">Selecione um supervisor</option>
+                    {supervisores.map((supervisor) => (
+                      <option key={supervisor.id} value={supervisor.id}>{supervisor.nome}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <button

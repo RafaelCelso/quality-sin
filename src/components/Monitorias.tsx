@@ -1,34 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { db, collection, getDocs, query, orderBy, limit, deleteDoc, doc } from '../firebase';
-import { Plus, Search, Phone, Mail, MessageSquare, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { db, collection, getDocs, query, orderBy, limit, deleteDoc, doc, where, Timestamp } from '../firebase';
+import { Plus, Search, Phone, Mail, MessageSquare, Edit, Trash2, AlertTriangle, Eye, Calendar } from 'lucide-react';
+import usePermissions from '../hooks/usePermissions';
 
 const Monitorias: React.FC = () => {
   const [monitorias, setMonitorias] = useState<any[]>([]);
+  const [filteredMonitorias, setFilteredMonitorias] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showNovaMonitoriaModal, setShowNovaMonitoriaModal] = useState(false);
   const [monitoriaToDelete, setMonitoriaToDelete] = useState<any>(null);
-  const [colaboradores, setColaboradores] = useState<any[]>([]);
-  const [colaboradorSearch, setColaboradorSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedColaborador, setSelectedColaborador] = useState<any>(null);
   const [tipoMonitoria, setTipoMonitoria] = useState('');
+  const [colaboradores, setColaboradores] = useState<any[]>([]);
+  const [colaboradorSearch, setColaboradorSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [averageResult, setAverageResult] = useState(0);
+
   const navigate = useNavigate();
+  const { checkPermission } = usePermissions();
 
   useEffect(() => {
     fetchMonitorias();
     fetchColaboradores();
   }, []);
 
+  useEffect(() => {
+    applyFilters();
+  }, [monitorias, searchTerm, startDate, endDate]);
+
   const fetchMonitorias = async () => {
     try {
-      const q = query(collection(db, 'monitorias'), orderBy('dataCriacao', 'desc'), limit(100));
+      const q = query(collection(db, 'monitorias'), orderBy('dataCriacao', 'desc'));
       const querySnapshot = await getDocs(q);
       const fetchedMonitorias = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMonitorias(fetchedMonitorias);
+      setLoading(false);
     } catch (error) {
       console.error("Erro ao buscar monitorias:", error);
+      setError("Erro ao carregar monitorias. Por favor, tente novamente.");
+      setLoading(false);
     }
   };
 
@@ -43,33 +59,52 @@ const Monitorias: React.FC = () => {
     }
   };
 
+  const applyFilters = () => {
+    let filtered = monitorias;
+
+    if (searchTerm) {
+      filtered = filtered.filter(monitoria =>
+        monitoria.colaboradorNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        monitoria.tipo.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (startDate) {
+      const startTimestamp = Timestamp.fromDate(new Date(startDate));
+      filtered = filtered.filter(monitoria => monitoria.dataCriacao >= startTimestamp);
+    }
+
+    if (endDate) {
+      const endTimestamp = Timestamp.fromDate(new Date(endDate + 'T23:59:59'));
+      filtered = filtered.filter(monitoria => monitoria.dataCriacao <= endTimestamp);
+    }
+
+    setFilteredMonitorias(filtered);
+
+    // Calculate average result
+    const totalResult = filtered.reduce((sum, monitoria) => sum + monitoria.notaMedia, 0);
+    const avgResult = filtered.length > 0 ? totalResult / filtered.length : 0;
+    setAverageResult(avgResult);
+  };
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value.toLowerCase());
+    setSearchTerm(e.target.value);
   };
 
-  const filteredMonitorias = monitorias.filter(monitoria =>
-    monitoria.colaboradorNome.toLowerCase().includes(searchTerm) ||
-    monitoria.tipo.toLowerCase().includes(searchTerm)
-  );
-
-  const handleDeleteClick = (monitoria: any) => {
-    setMonitoriaToDelete(monitoria);
-    setShowDeleteModal(true);
-  };
-
-  const handleDelete = async () => {
-    if (monitoriaToDelete) {
-      try {
-        await deleteDoc(doc(db, 'monitorias', monitoriaToDelete.id));
-        fetchMonitorias();
-        setShowDeleteModal(false);
-      } catch (error) {
-        console.error("Erro ao excluir monitoria:", error);
-      }
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === 'startDate') {
+      setStartDate(value);
+    } else if (name === 'endDate') {
+      setEndDate(value);
     }
   };
 
   const handleNovaMonitoria = () => {
+    setShowNovaMonitoriaModal(true);
+  };
+
+  const handleNovaMonitoriaSubmit = () => {
     if (selectedColaborador && tipoMonitoria) {
       let route = '';
       switch (tipoMonitoria) {
@@ -86,9 +121,32 @@ const Monitorias: React.FC = () => {
           console.error("Tipo de monitoria inválido");
           return;
       }
-      navigate(route, { state: { colaborador: selectedColaborador, tipoMonitoria } });
-      setShowModal(false);
+      navigate(route, { state: { colaborador: selectedColaborador, tipoMonitoria, isEditing: false } });
+      setShowNovaMonitoriaModal(false);
     }
+  };
+
+  const handleViewClick = (monitoria: any) => {
+    if (!checkPermission('Visualizar Monitoria')) {
+      alert('Você não tem permissão para visualizar monitorias.');
+      return;
+    }
+    let route = '';
+    switch (monitoria.tipo) {
+      case 'Ligação':
+        route = '/monitoria-ligacao';
+        break;
+      case 'E-mail':
+        route = '/monitoria-email';
+        break;
+      case 'Chat':
+        route = '/monitoria-chat';
+        break;
+      default:
+        console.error("Tipo de monitoria inválido");
+        return;
+    }
+    navigate(route, { state: { monitoria, isViewing: true, isEditing: false } });
   };
 
   const handleEditClick = (monitoria: any) => {
@@ -107,8 +165,40 @@ const Monitorias: React.FC = () => {
         console.error("Tipo de monitoria inválido");
         return;
     }
-    navigate(route, { state: { monitoria, isEditing: true } });
+    navigate(route, { state: { monitoria, isEditing: true, isViewing: false } });
   };
+
+  const handleDeleteClick = (monitoria: any) => {
+    setMonitoriaToDelete(monitoria);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (monitoriaToDelete) {
+      try {
+        await deleteDoc(doc(db, 'monitorias', monitoriaToDelete.id));
+        fetchMonitorias();
+        setShowDeleteModal(false);
+      } catch (error) {
+        console.error("Erro ao excluir monitoria:", error);
+        setError("Erro ao excluir monitoria. Por favor, tente novamente.");
+      }
+    }
+  };
+
+  const getResultCardColor = (result: number) => {
+    if (result >= 90) return 'bg-green-100 border-green-500 text-green-700';
+    if (result >= 85) return 'bg-yellow-100 border-yellow-500 text-yellow-700';
+    return 'bg-red-100 border-red-500 text-red-700';
+  };
+
+  if (loading) {
+    return <div>Carregando...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>;
+  }
 
   return (
     <div className="flex bg-gray-100 min-h-screen">
@@ -117,16 +207,18 @@ const Monitorias: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-800">Monitorias</h1>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
-            >
-              <Plus size={20} className="mr-2" />
-              Nova Monitoria
-            </button>
+            {checkPermission('Criar Monitoria') && (
+              <button
+                onClick={handleNovaMonitoria}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
+              >
+                <Plus size={20} className="mr-2" />
+                Nova Monitoria
+              </button>
+            )}
           </div>
           
-          <div className="mb-6">
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <input
                 type="text"
@@ -137,6 +229,31 @@ const Monitorias: React.FC = () => {
               />
               <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
             </div>
+            <div>
+              <input
+                type="date"
+                name="startDate"
+                value={startDate}
+                onChange={handleDateChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="Data Inicial"
+              />
+            </div>
+            <div>
+              <input
+                type="date"
+                name="endDate"
+                value={endDate}
+                onChange={handleDateChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="Data Final"
+              />
+            </div>
+          </div>
+
+          <div className={`mb-6 p-4 rounded-lg border ${getResultCardColor(averageResult)}`}>
+            <h2 className="text-lg font-semibold mb-2">Resultado Médio</h2>
+            <p className="text-3xl font-bold">{averageResult.toFixed(2)}%</p>
           </div>
 
           <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -174,18 +291,30 @@ const Monitorias: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleEditClick(monitoria)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        <Edit size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(monitoria)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 size={20} />
-                      </button>
+                      {checkPermission('Visualizar Monitoria') && (
+                        <button
+                          onClick={() => handleViewClick(monitoria)}
+                          className="text-blue-600 hover:text-blue-900 mr-4"
+                        >
+                          <Eye size={20} />
+                        </button>
+                      )}
+                      {checkPermission('Editar Monitoria') && (
+                        <button
+                          onClick={() => handleEditClick(monitoria)}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        >
+                          <Edit size={20} />
+                        </button>
+                      )}
+                      {checkPermission('Excluir Monitoria') && (
+                        <button
+                          onClick={() => handleDeleteClick(monitoria)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -194,7 +323,35 @@ const Monitorias: React.FC = () => {
           </div>
         </div>
 
-        {showModal && (
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+              <div className="flex items-center justify-center mb-4">
+                <AlertTriangle className="h-12 w-12 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-center mb-4">Excluir Monitoria</h3>
+              <p className="text-center mb-6">
+                Tem certeza que deseja excluir esta monitoria? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showNovaMonitoriaModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
               <h2 className="text-2xl font-bold mb-4">Nova Monitoria</h2>
@@ -262,45 +419,17 @@ const Monitorias: React.FC = () => {
               </div>
               <div className="flex justify-end space-x-2">
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => setShowNovaMonitoriaModal(false)}
                   className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={handleNovaMonitoria}
+                  onClick={handleNovaMonitoriaSubmit}
                   className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors duration-200"
                   disabled={!selectedColaborador || !tipoMonitoria}
                 >
                   Iniciar Monitoria
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showDeleteModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-              <div className="flex items-center justify-center mb-4">
-                <AlertTriangle className="h-12 w-12 text-red-500" />
-              </div>
-              <h3 className="text-lg font-bold text-center mb-4">Excluir Monitoria</h3>
-              <p className="text-center mb-6">
-                Tem certeza que deseja excluir esta monitoria? Esta ação não pode ser desfeita.
-              </p>
-              <div className="flex justify-center space-x-4">
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
-                >
-                  Excluir
                 </button>
               </div>
             </div>

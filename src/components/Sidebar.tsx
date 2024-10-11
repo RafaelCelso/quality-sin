@@ -1,20 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, PhoneCall, Settings, Users, BookOpen, LogOut, User, Shield, Briefcase, FolderOpen } from 'lucide-react';
-import { auth, signOut } from '../firebase';
+import { Home, PhoneCall, Users, LogOut, User, Shield, Briefcase, FolderOpen } from 'lucide-react';
+import { auth, signOut, db } from '../firebase';
 import usePermissions from '../hooks/usePermissions';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { checkPermission } = usePermissions();
+  const [userPermissao, setUserPermissao] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserPermissao = async () => {
+      if (auth.currentUser) {
+        const userQuery = query(collection(db, 'usuarios'), where('uid', '==', auth.currentUser.uid));
+        const userSnapshot = await getDocs(userQuery);
+        if (!userSnapshot.empty) {
+          const userData = userSnapshot.docs[0].data();
+          setUserPermissao(userData.permissao);
+        }
+      }
+    };
+
+    fetchUserPermissao();
+  }, []);
 
   const menuItems = [
     { icon: <Home size={20} />, text: 'Início', link: '/dashboard', permission: 'Visualizar Dashboard' },
     { icon: <PhoneCall size={20} />, text: 'Monitorias', link: '/monitorias', permission: 'Visualizar Dashboard' },
-    { icon: <Settings size={20} />, text: 'Calibração', link: '/calibracao', permission: 'Visualizar Dashboard' },
     { icon: <Users size={20} />, text: 'Colaboradores', link: '/colaboradores', permission: 'Visualizar Colaboradores' },
-    { icon: <BookOpen size={20} />, text: 'Documentação', link: '/documentacao', permission: 'Visualizar Documentação' },
-    { icon: <BookOpen size={20} />, text: 'Treinamentos', link: '/treinamentos', permission: 'Visualizar Treinamentos' },
     { icon: <User size={20} />, text: 'Perfil', link: '/profile', permission: 'Acessar Perfil' },
     { icon: <Users size={20} />, text: 'Usuários', link: '/usuarios', permission: 'Visualizar Usuários' },
     { icon: <Shield size={20} />, text: 'Permissões', link: '/permissoes', permission: 'Gerenciar Permissões' },
@@ -39,7 +53,8 @@ const Sidebar: React.FC = () => {
       <nav>
         <ul>
           {menuItems.map((item, index) => (
-            checkPermission(item.permission) && (
+            ((userPermissao === 'Assistente' && (item.text === 'Monitorias' || item.text === 'Perfil')) || 
+             (userPermissao !== 'Assistente' && checkPermission(item.permission))) && (
               <li key={index} className="mb-2">
                 <Link to={item.link} className="flex items-center p-2 hover:bg-emerald-700 rounded">
                   {item.icon}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
-import { Shield, Save, User, Users, FileText, Trash2, Settings, Briefcase, FolderOpen, BookOpen, AlertCircle, Check } from 'lucide-react';
+import { Shield, Save, User, Users, FileText, Trash2, Settings, Briefcase, FolderOpen, AlertCircle, Check, Eye } from 'lucide-react';
 import { db, collection, getDocs, doc, updateDoc } from '../firebase';
 
 interface Permissao {
@@ -22,6 +22,7 @@ const Permissoes: React.FC = () => {
     { nome: 'Criar Monitoria', icon: <FileText size={20} /> },
     { nome: 'Editar Monitoria', icon: <FileText size={20} /> },
     { nome: 'Excluir Monitoria', icon: <Trash2 size={20} /> },
+    { nome: 'Visualizar Monitoria', icon: <Eye size={20} /> },
     { nome: 'Visualizar Colaboradores', icon: <Users size={20} /> },
     { nome: 'Criar Colaborador', icon: <User size={20} /> },
     { nome: 'Editar Colaborador', icon: <User size={20} /> },
@@ -41,8 +42,6 @@ const Permissoes: React.FC = () => {
     { nome: 'Excluir Projeto', icon: <Trash2 size={20} /> },
     { nome: 'Acessar Perfil', icon: <User size={20} /> },
     { nome: 'Editar Perfil', icon: <User size={20} /> },
-    { nome: 'Visualizar Documentação', icon: <BookOpen size={20} /> },
-    { nome: 'Visualizar Treinamentos', icon: <BookOpen size={20} /> },
   ];
 
   useEffect(() => {
