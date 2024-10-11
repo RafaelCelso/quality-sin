@@ -39,7 +39,21 @@ const Monitorias: React.FC = () => {
       const q = query(collection(db, 'monitorias'), orderBy('dataCriacao', 'desc'));
       const querySnapshot = await getDocs(q);
       const fetchedMonitorias = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMonitorias(fetchedMonitorias);
+      
+      // Buscar informações do avaliador para cada monitoria
+      const monitoriasComAvaliador = await Promise.all(fetchedMonitorias.map(async (monitoria) => {
+        if (monitoria.avaliadorId) {
+          const avaliadorDoc = await getDocs(query(collection(db, 'usuarios'), where('uid', '==', monitoria.avaliadorId)));
+          if (!avaliadorDoc.empty) {
+            const avaliadorData = avaliadorDoc.docs[0].data();
+            return { ...monitoria, avaliadorCargo: avaliadorData.cargo };
+          }
+        }
+        return { ...monitoria, avaliadorCargo: 'Não especificado' };
+      }));
+
+      setMonitorias(monitoriasComAvaliador);
+      setFilteredMonitorias(monitoriasComAvaliador);
       setLoading(false);
     } catch (error) {
       console.error("Erro ao buscar monitorias:", error);
@@ -264,6 +278,7 @@ const Monitorias: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nota Média</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliador</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
@@ -290,6 +305,7 @@ const Monitorias: React.FC = () => {
                         {monitoria.notaMedia.toFixed(2)}%
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">{monitoria.avaliadorCargo}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {checkPermission('Visualizar Monitoria') && (
                         <button
@@ -323,6 +339,7 @@ const Monitorias: React.FC = () => {
           </div>
         </div>
 
+        {/* Modal de exclusão */}
         {showDeleteModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -351,6 +368,7 @@ const Monitorias: React.FC = () => {
           </div>
         )}
 
+        {/* Modal de nova monitoria */}
         {showNovaMonitoriaModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
             <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">

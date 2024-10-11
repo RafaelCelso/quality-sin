@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { db, collection, addDoc, updateDoc, doc, Timestamp } from '../firebase';
+import { db, collection, addDoc, updateDoc, doc, Timestamp, getDoc } from '../firebase';
 import { Phone, Star, Clock, Calendar, MessageSquare, Heart, Target, User, CheckCircle, AlertCircle, HelpCircle, Smile, Shield, BookOpen, UserCheck, Flag, Zap } from 'lucide-react';
 import InputMask from 'react-input-mask';
 import usePermissions from '../hooks/usePermissions';
@@ -9,7 +9,7 @@ import usePermissions from '../hooks/usePermissions';
 const MonitoriaLigacao: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { monitoria, isEditing, isViewing } = location.state || {};
+  const { colaborador, tipoMonitoria, monitoria, isEditing, isViewing } = location.state || {};
   const { checkPermission } = usePermissions();
 
   const [formData, setFormData] = useState({
@@ -33,10 +33,34 @@ const MonitoriaLigacao: React.FC = () => {
   });
 
   useEffect(() => {
-    if (monitoria) {
-      setFormData(monitoria);
-    }
-  }, [monitoria]);
+    const loadData = async () => {
+      if (monitoria) {
+        setFormData(monitoria);
+      } else if (colaborador) {
+        setFormData(prev => ({
+          ...prev,
+          colaboradorNome: colaborador.nome,
+          colaboradorId: colaborador.id
+        }));
+      } else if (isEditing && monitoria?.colaboradorId) {
+        try {
+          const colaboradorDoc = await getDoc(doc(db, 'colaboradores', monitoria.colaboradorId));
+          if (colaboradorDoc.exists()) {
+            const colaboradorData = colaboradorDoc.data();
+            setFormData(prev => ({
+              ...prev,
+              colaboradorNome: colaboradorData.nome,
+              colaboradorId: monitoria.colaboradorId
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching collaborator data:", error);
+        }
+      }
+    };
+
+    loadData();
+  }, [monitoria, colaborador, isEditing]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     if (isViewing) return;
