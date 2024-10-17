@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { db, collection, getDocs, query, orderBy, limit, deleteDoc, doc, where, Timestamp } from '../firebase';
-import { Plus, Search, Phone, Mail, MessageSquare, Edit, Trash2, AlertTriangle, Eye, Calendar } from 'lucide-react';
+import { Plus, Search, Phone, Mail, MessageSquare, Edit, Trash2, AlertTriangle, Eye, Calendar, MessageCircle, X } from 'lucide-react';
 import usePermissions from '../hooks/usePermissions';
 
 const Monitorias: React.FC = () => {
@@ -21,6 +21,8 @@ const Monitorias: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [averageResult, setAverageResult] = useState(0);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState('');
 
   const navigate = useNavigate();
   const { checkPermission } = usePermissions();
@@ -202,6 +204,11 @@ const Monitorias: React.FC = () => {
     return 'bg-green-100 text-green-800';
   };
 
+  const handleFeedbackClick = (feedback: string) => {
+    setSelectedFeedback(feedback);
+    setShowFeedbackModal(true);
+  };
+
   if (loading) {
     return <div>Carregando...</div>;
   }
@@ -275,6 +282,7 @@ const Monitorias: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pontuação</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliador</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
@@ -298,6 +306,16 @@ const Monitorias: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{monitoria.avaliadorNome}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {monitoria.registroFeedback && (
+                        <button
+                          onClick={() => handleFeedbackClick(monitoria.registroFeedback)}
+                          className="text-emerald-500 hover:text-emerald-600"
+                        >
+                          <MessageCircle size={20} />
+                        </button>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {checkPermission('Visualizar Monitoria') && (
                         <button
@@ -441,6 +459,31 @@ const Monitorias: React.FC = () => {
                 >
                   Iniciar Monitoria
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Feedback */}
+        {showFeedbackModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Registro de Feedback</h2>
+                <button
+                  onClick={() => setShowFeedbackModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {selectedFeedback.split('\n\n').map((feedback, index) => (
+                  <div key={index} className="mb-4">
+                    <p className="text-sm text-gray-500">{feedback.split('\n')[0]}</p>
+                    <p className="whitespace-pre-wrap mt-1">{feedback.split('\n').slice(1).join('\n')}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

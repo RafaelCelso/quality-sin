@@ -29,6 +29,9 @@ const MonitoriaEmail: React.FC = () => {
     fileUrl: ''
   });
 
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+
   useEffect(() => {
     if (monitoria) {
       setFormData(monitoria);
@@ -141,6 +144,18 @@ const MonitoriaEmail: React.FC = () => {
         // Adicione aqui uma notificação para o usuário sobre o erro de upload
       }
     }
+  };
+
+  const handleApplyFeedback = () => {
+    setShowFeedbackModal(true);
+  };
+
+  const handleSaveFeedback = () => {
+    setFormData(prev => ({
+      ...prev,
+      registroFeedback: feedbackText
+    }));
+    setShowFeedbackModal(false);
   };
 
   if (loading) {
@@ -264,6 +279,13 @@ const MonitoriaEmail: React.FC = () => {
             />
           </div>
 
+          {formData.registroFeedback && (
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-4">Registro de Feedback</h3>
+              <p className="whitespace-pre-wrap">{formData.registroFeedback}</p>
+            </div>
+          )}
+
           {!isViewing && (
             <div className="flex justify-end space-x-4">
               <button
@@ -274,6 +296,13 @@ const MonitoriaEmail: React.FC = () => {
                 Cancelar
               </button>
               <button
+                type="button"
+                onClick={handleApplyFeedback}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+              >
+                Aplicar Feedback
+              </button>
+              <button
                 type="submit"
                 className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
               >
@@ -282,6 +311,34 @@ const MonitoriaEmail: React.FC = () => {
             </div>
           )}
         </form>
+
+        {showFeedbackModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Aplicar Feedback</h2>
+              <textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                className="w-full h-40 p-2 border border-gray-300 rounded"
+                placeholder="Digite o feedback aqui..."
+              />
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={() => setShowFeedbackModal(false)}
+                  className="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveFeedback}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
