@@ -5,16 +5,22 @@ import { db, collection, addDoc, updateDoc, doc, Timestamp, getDoc } from '../fi
 import { Phone, Star, Clock, Calendar, MessageSquare, Heart, Target, User, CheckCircle, AlertCircle, HelpCircle, Smile, Shield, BookOpen, UserCheck, Flag, Zap } from 'lucide-react';
 import InputMask from 'react-input-mask';
 import usePermissions from '../hooks/usePermissions';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
 
 const MonitoriaLigacao: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { colaborador, tipoMonitoria, monitoria, isEditing, isViewing } = location.state || {};
   const { checkPermission } = usePermissions();
+  const { user, loading } = useAuth();
 
   const [formData, setFormData] = useState({
     colaboradorNome: '',
     colaboradorId: '',
+    avaliadorNome: '',
+    avaliadorId: '',
     tipo: 'Ligação',
     duracao: '',
     dataHora: '',
@@ -29,7 +35,8 @@ const MonitoriaLigacao: React.FC = () => {
     represente: { nota: '', comentario: '' },
     enriqueca: { nota: '', comentario: '' },
     feedback: '',
-    notaMedia: 0
+    notaMedia: 0,
+    audioUrl: ''
   });
 
   useEffect(() => {
@@ -62,6 +69,16 @@ const MonitoriaLigacao: React.FC = () => {
     loadData();
   }, [monitoria, colaborador, isEditing]);
 
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        avaliadorNome: user.displayName || '',
+        avaliadorId: user.uid,
+      }));
+    }
+  }, [user]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     if (isViewing) return;
     const { name, value } = e.target;
@@ -76,6 +93,21 @@ const MonitoriaLigacao: React.FC = () => {
     }));
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const uploadedFile = event.target.files[0];
+
+      try {
+        const storageRef = ref(storage, `audios/${formData.colaboradorId}/${uploadedFile.name}`);
+        await uploadBytes(storageRef, uploadedFile);
+        const downloadUrl = await getDownloadURL(storageRef);
+        setFormData(prev => ({ ...prev, audioUrl: downloadUrl }));
+      } catch (error) {
+        console.error("Erro ao fazer upload do arquivo:", error);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isViewing) return;
@@ -83,7 +115,8 @@ const MonitoriaLigacao: React.FC = () => {
       const monitoriaData = {
         ...formData,
         dataCriacao: Timestamp.now(),
-        notaMedia: calcularNotaMedia()
+        notaMedia: calcularNotaMedia(),
+        // Não é necessário definir avaliadorNome e avaliadorId aqui, pois já estão no formData
       };
 
       if (isEditing) {
@@ -135,6 +168,10 @@ const MonitoriaLigacao: React.FC = () => {
     { key: 'enriqueca', icon: <Zap className="text-emerald-600" size={24} />, title: 'Enriqueça' },
   ];
 
+  if (loading) {
+    return <div>Carregando...</div>;
+  }
+
   return (
     <div className="flex">
       <Sidebar />
@@ -144,7 +181,7 @@ const MonitoriaLigacao: React.FC = () => {
         </h1>
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h2 className="text-xl font-semibold mb-4">{formData.colaboradorNome}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-emerald-100 p-4 rounded-lg">
               <div className="flex items-center">
                 <Phone className="text-emerald-600 mr-2" size={20} />
@@ -158,6 +195,13 @@ const MonitoriaLigacao: React.FC = () => {
                 <span className="font-medium">Nota Média</span>
               </div>
               <p className="mt-1">{formData.notaMedia.toFixed(1)}%</p>
+            </div>
+            <div className="bg-gray-100 p-4 rounded-lg">
+              <div className="flex items-center">
+                <User className="text-emerald-600 mr-2" size={20} />
+                <span className="font-medium">Avaliador</span>
+              </div>
+              <p className="mt-1">{formData.avaliadorNome}</p>
             </div>
           </div>
           <h3 className="text-lg font-semibold mt-6 mb-2">Informações do Atendimento</h3>
@@ -197,6 +241,22 @@ const MonitoriaLigacao: React.FC = () => {
                 />
               </div>
             </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700">Arquivo de Áudio</label>
+            <input
+              type="file"
+              accept=".mp3,.mp4,.wav"
+              onChange={handleFileUpload}
+              className="mt-1 block w-full"
+              disabled={isViewing}
+            />
+            {formData.audioUrl && (
+              <audio controls className="mt-2 w-full">
+                <source src={formData.audioUrl} type="audio/mpeg" />
+                Seu navegador não suporta o elemento de áudio.
+              </audio>
+            )}
           </div>
         </div>
 

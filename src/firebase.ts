@@ -1,23 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signOut, updateProfile, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  startAfter,
-  updateDoc,
-  deleteDoc,
-  doc,
-  Timestamp,
-  setDoc,
-  getDoc,
-  onSnapshot
-} from 'firebase/firestore';
+import { getAuth, signOut, updateProfile, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, doc, Timestamp, deleteDoc, onSnapshot, limit, orderBy, getDoc, setDoc } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
     apiKey: "AIzaSyCLLCWp-n_cjrHuKpvHL58K3RFma4mX-G8",
@@ -37,30 +21,32 @@ const auth = getAuth(app);
 // Get Firestore instance
 const db = getFirestore(app);
 
-export { 
-  auth, 
+// Get Storage instance
+const storage = getStorage(app);
+
+export {
+  auth,
   db,
-  signOut, 
-  updateProfile, 
-  updateEmail, 
-  updatePassword, 
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  sendPasswordResetEmail,
-  createUserWithEmailAndPassword,
+  storage,
   collection,
-  addDoc,
-  getDocs,
   query,
   where,
-  orderBy,
-  limit,
-  startAfter,
+  getDocs,
+  addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   Timestamp,
-  setDoc,
+  deleteDoc,
+  signOut,
+  onSnapshot,
+  limit,
+  orderBy,
+  updateProfile,
+  updateEmail,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  createUserWithEmailAndPassword,
   getDoc,
-  onSnapshot
+  setDoc
 };

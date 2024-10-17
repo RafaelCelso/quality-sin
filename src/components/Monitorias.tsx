@@ -40,20 +40,10 @@ const Monitorias: React.FC = () => {
       const querySnapshot = await getDocs(q);
       const fetchedMonitorias = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Buscar informações do avaliador para cada monitoria
-      const monitoriasComAvaliador = await Promise.all(fetchedMonitorias.map(async (monitoria) => {
-        if (monitoria.avaliadorId) {
-          const avaliadorDoc = await getDocs(query(collection(db, 'usuarios'), where('uid', '==', monitoria.avaliadorId)));
-          if (!avaliadorDoc.empty) {
-            const avaliadorData = avaliadorDoc.docs[0].data();
-            return { ...monitoria, avaliadorCargo: avaliadorData.cargo };
-          }
-        }
-        return { ...monitoria, avaliadorCargo: 'Não especificado' };
-      }));
-
-      setMonitorias(monitoriasComAvaliador);
-      setFilteredMonitorias(monitoriasComAvaliador);
+      // Não é mais necessário buscar informações adicionais do avaliador,
+      // pois o nome do avaliador já deve estar salvo na monitoria
+      setMonitorias(fetchedMonitorias);
+      setFilteredMonitorias(fetchedMonitorias);
       setLoading(false);
     } catch (error) {
       console.error("Erro ao buscar monitorias:", error);
@@ -206,6 +196,12 @@ const Monitorias: React.FC = () => {
     return 'bg-red-100 border-red-500 text-red-700';
   };
 
+  const getPontuacaoColor = (pontuacao: number) => {
+    if (pontuacao < 80) return 'bg-red-100 text-red-800';
+    if (pontuacao < 90) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-green-100 text-green-800';
+  };
+
   if (loading) {
     return <div>Carregando...</div>;
   }
@@ -276,9 +272,9 @@ const Monitorias: React.FC = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colaborador</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nota Média</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pontuação</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliador</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
@@ -295,17 +291,13 @@ const Monitorias: React.FC = () => {
                         {monitoria.tipo}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        monitoria.notaMedia >= 90 ? 'bg-green-100 text-green-800' :
-                        monitoria.notaMedia >= 70 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`px-2 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getPontuacaoColor(monitoria.notaMedia)}`}>
                         {monitoria.notaMedia.toFixed(2)}%
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{monitoria.avaliadorCargo}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{monitoria.avaliadorNome}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {checkPermission('Visualizar Monitoria') && (
                         <button

@@ -3,15 +3,21 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { db, collection, addDoc, updateDoc, doc, Timestamp } from '../firebase';
 import { Mail, Star, Calendar, MessageSquare, Heart, User, Clock } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
 
 const MonitoriaEmail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { monitoria, isEditing, isViewing } = location.state || {};
+  const { colaborador, monitoria, isEditing, isViewing } = location.state || {};
+  const { user, loading } = useAuth();
 
   const [formData, setFormData] = useState({
     colaboradorNome: '',
     colaboradorId: '',
+    avaliadorNome: '',
+    avaliadorId: '',
     tipo: 'E-mail',
     dataHora: '',
     cordialidade: { nota: 0, comentario: '' },
@@ -19,14 +25,31 @@ const MonitoriaEmail: React.FC = () => {
     atencaoPerfil: { nota: 0, comentario: '' },
     tempoResposta: { nota: 0, comentario: '' },
     feedback: '',
-    notaMedia: 0
+    notaMedia: 0,
+    fileUrl: ''
   });
 
   useEffect(() => {
     if (monitoria) {
       setFormData(monitoria);
+    } else if (colaborador) {
+      setFormData(prev => ({
+        ...prev,
+        colaboradorNome: colaborador.nome,
+        colaboradorId: colaborador.id
+      }));
     }
-  }, [monitoria]);
+  }, [monitoria, colaborador]);
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        avaliadorNome: user.displayName || '',
+        avaliadorId: user.uid,
+      }));
+    }
+  }, [user]);
 
   useEffect(() => {
     const novaNotaMedia = calcularNotaMedia();
@@ -54,7 +77,9 @@ const MonitoriaEmail: React.FC = () => {
       const monitoriaData = {
         ...formData,
         dataCriacao: Timestamp.now(),
-        notaMedia: calcularNotaMedia()
+        notaMedia: calcularNotaMedia(),
+        avaliadorNome: user?.displayName || '',
+        avaliadorId: user?.uid || '',
       };
 
       if (isEditing) {
@@ -97,6 +122,31 @@ const MonitoriaEmail: React.FC = () => {
     { key: 'tempoResposta', icon: <Clock className="text-emerald-600" size={24} />, title: 'Tempo de resposta - interação' },
   ];
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const uploadedFile = event.target.files[0];
+
+      try {
+        // Upload do arquivo para o Firebase Storage
+        const storageRef = ref(storage, `emails/${formData.colaboradorId}/${uploadedFile.name}`);
+        await uploadBytes(storageRef, uploadedFile);
+
+        // Obter a URL de download
+        const downloadUrl = await getDownloadURL(storageRef);
+
+        // Atualizar o formData com a URL do arquivo
+        setFormData(prev => ({ ...prev, fileUrl: downloadUrl }));
+      } catch (error) {
+        console.error("Erro ao fazer upload do arquivo:", error);
+        // Adicione aqui uma notificação para o usuário sobre o erro de upload
+      }
+    }
+  };
+
+  if (loading) {
+    return <div>Carregando...</div>;
+  }
+
   return (
     <div className="flex">
       <Sidebar />
@@ -105,8 +155,8 @@ const MonitoriaEmail: React.FC = () => {
           {isViewing ? 'Visualizar' : isEditing ? 'Editar' : 'Nova'} Monitoria de E-mail
         </h1>
         <div className="bg-white p-6 rounded-lg shadow mb-6">
-          <h2 className="text-xl font-semibold mb-4">{formData.colaboradorNome}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-xl font-semibold mb-4">Colaborador: {formData.colaboradorNome}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-emerald-100 p-4 rounded-lg">
               <div className="flex items-center">
                 <Mail className="text-emerald-600 mr-2" size={20} />
@@ -120,6 +170,13 @@ const MonitoriaEmail: React.FC = () => {
                 <span className="font-medium">Nota Média</span>
               </div>
               <p className="mt-1">{formData.notaMedia.toFixed(1)}%</p>
+            </div>
+            <div className="bg-gray-100 p-4 rounded-lg">
+              <div className="flex items-center">
+                <User className="text-emerald-600 mr-2" size={20} />
+                <span className="font-medium">Avaliador</span>
+              </div>
+              <p className="mt-1">{formData.avaliadorNome}</p>
             </div>
           </div>
           <h3 className="text-lg font-semibold mt-6 mb-2">Informações do Atendimento</h3>
@@ -138,6 +195,23 @@ const MonitoriaEmail: React.FC = () => {
                 disabled={isViewing}
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Arquivo do E-mail</label>
+            <input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.eml"
+              onChange={handleFileUpload}
+              className="mt-1 block w-full"
+              disabled={isViewing}
+            />
+            {formData.fileUrl && (
+              <div className="mt-2">
+                <a href={formData.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  Visualizar arquivo
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
