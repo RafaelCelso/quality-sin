@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Home, PhoneCall, Mail, MessageSquare, BarChart2, Calendar, Target } from 'lucide-react';
+import { Home, PhoneCall, Mail, MessageSquare, BarChart2, Calendar, Target, Download } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import Sidebar from './Sidebar';
 import CircularProgressBar from './CircularProgressBar';
 import { auth, db, collection, query, where, getDocs, onSnapshot, orderBy, getDoc, doc, updateDoc } from '../firebase';
 import usePermissions from '../hooks/usePermissions';
+import * as XLSX from 'xlsx';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -573,22 +574,61 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
+  const generateExcelReport = () => {
+    const workbook = XLSX.utils.book_new();
+    const worksheetData = [
+      ['Relatório Detalhado de Monitorias'],
+      ['Período:', `${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' })} ${selectedYear}`],
+      ['Projeto:', selectedProject],
+      ['Colaborador:', selectedColaborador],
+      [],
+      ['Tipo', 'Total', 'Meta', 'Média de Resultados'],
+      ['Ligação', progress.call, goals.call, resultsByType.call.toFixed(2)],
+      ['E-mail', progress.email, goals.email, resultsByType.email.toFixed(2)],
+      ['Chat', progress.chat, goals.chat, resultsByType.chat.toFixed(2)],
+      ['Total', Object.values(progress).reduce((a, b) => a + b, 0), totalGoal, averageResult.toFixed(2)],
+      [],
+      ['Critérios de Ligação'],
+      ...Object.entries(criteriosLigacao).map(([key, value]) => [key, value.toFixed(2)]),
+      [],
+      ['Critérios de E-mail'],
+      ...Object.entries(criteriosEmail).map(([key, value]) => [key, value.toFixed(2)]),
+      [],
+      ['Critérios de Chat'],
+      ...Object.entries(criteriosChat).map(([key, value]) => [key, value.toFixed(2)]),
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório de Monitorias');
+
+    XLSX.writeFile(workbook, 'relatorio_monitorias.xlsx');
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div>
+      <div className="flex-1 p-4 md:p-8 overflow-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+          <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
             <p className="text-gray-600">Resumo das atividades</p>
           </div>
-          <button
-            onClick={() => setShowMetaModal(true)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
-          >
-            <Target size={20} className="mr-2" />
-            Definir Meta
-          </button>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setShowMetaModal(true)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
+            >
+              <Target size={20} className="mr-2" />
+              Definir Meta
+            </button>
+            <button
+              onClick={generateExcelReport}
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
+            >
+              <Download size={20} className="mr-2" />
+              Baixar Relatório
+            </button>
+          </div>
         </div>
         
         {renderDateAndProjectFilter()}
