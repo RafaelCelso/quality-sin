@@ -73,7 +73,6 @@ const Login: React.FC = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md">
-        <img src="./sin-logo.png" alt="SIN Solution Logo" className="mx-auto mb-8 w-32" />
         <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
           <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
           {message && (
