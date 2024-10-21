@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Phone, Mail, MessageSquare, Edit, Trash2, AlertTriangle, Eye, Calendar, MessageCircle, X } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { db, collection, getDocs, query, orderBy, limit, deleteDoc, doc, where, Timestamp } from '../firebase';
-import { Plus, Search, Phone, Mail, MessageSquare, Edit, Trash2, AlertTriangle, Eye, Calendar, MessageCircle, X } from 'lucide-react';
 import usePermissions from '../hooks/usePermissions';
 
 const Monitorias: React.FC = () => {
@@ -38,18 +38,17 @@ const Monitorias: React.FC = () => {
 
   const fetchMonitorias = async () => {
     try {
+      setLoading(true);
       const q = query(collection(db, 'monitorias'), orderBy('dataCriacao', 'desc'));
       const querySnapshot = await getDocs(q);
       const fetchedMonitorias = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Não é mais necessário buscar informações adicionais do avaliador,
-      // pois o nome do avaliador já deve estar salvo na monitoria
       setMonitorias(fetchedMonitorias);
       setFilteredMonitorias(fetchedMonitorias);
-      setLoading(false);
     } catch (error) {
       console.error("Erro ao buscar monitorias:", error);
       setError("Erro ao carregar monitorias. Por favor, tente novamente.");
+    } finally {
       setLoading(false);
     }
   };
@@ -62,6 +61,7 @@ const Monitorias: React.FC = () => {
       setColaboradores(fetchedColaboradores);
     } catch (error) {
       console.error("Erro ao buscar colaboradores:", error);
+      setError("Erro ao carregar colaboradores. Por favor, tente novamente.");
     }
   };
 
@@ -273,80 +273,86 @@ const Monitorias: React.FC = () => {
             <p className="text-3xl font-bold">{averageResult.toFixed(2)}%</p>
           </div>
 
-          <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colaborador</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pontuação</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliador</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMonitorias.map((monitoria) => (
-                  <tr key={monitoria.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">{monitoria.colaboradorNome}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        monitoria.tipo === 'Ligação' ? 'bg-blue-100 text-blue-800' :
-                        monitoria.tipo === 'E-mail' ? 'bg-green-100 text-green-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {monitoria.tipo}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getPontuacaoColor(monitoria.notaMedia)}`}>
-                        {monitoria.notaMedia.toFixed(2)}%
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{monitoria.avaliadorNome}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {monitoria.registroFeedback && (
-                        <button
-                          onClick={() => handleFeedbackClick(monitoria.registroFeedback)}
-                          className="text-emerald-500 hover:text-emerald-600"
-                        >
-                          <MessageCircle size={20} />
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {checkPermission('Visualizar Monitoria') && (
-                        <button
-                          onClick={() => handleViewClick(monitoria)}
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                        >
-                          <Eye size={20} />
-                        </button>
-                      )}
-                      {checkPermission('Editar Monitoria') && (
-                        <button
-                          onClick={() => handleEditClick(monitoria)}
-                          className="text-indigo-600 hover:text-indigo-900 mr-4"
-                        >
-                          <Edit size={20} />
-                        </button>
-                      )}
-                      {checkPermission('Excluir Monitoria') && (
-                        <button
-                          onClick={() => handleDeleteClick(monitoria)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      )}
-                    </td>
+          {loading ? (
+            <div className="text-center py-4">Carregando...</div>
+          ) : error ? (
+            <div className="text-center py-4 text-red-500">{error}</div>
+          ) : (
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colaborador</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pontuação</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliador</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredMonitorias.map((monitoria) => (
+                    <tr key={monitoria.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">{monitoria.colaboradorNome}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          monitoria.tipo === 'Ligação' ? 'bg-blue-100 text-blue-800' :
+                          monitoria.tipo === 'E-mail' ? 'bg-green-100 text-green-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {monitoria.tipo}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getPontuacaoColor(monitoria.notaMedia)}`}>
+                          {monitoria.notaMedia.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{monitoria.avaliadorNome}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {monitoria.registroFeedback && (
+                          <button
+                            onClick={() => handleFeedbackClick(monitoria.registroFeedback)}
+                            className="text-emerald-500 hover:text-emerald-600"
+                          >
+                            <MessageCircle size={20} />
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {checkPermission('Visualizar Monitoria') && (
+                          <button
+                            onClick={() => handleViewClick(monitoria)}
+                            className="text-blue-600 hover:text-blue-900 mr-4"
+                          >
+                            <Eye size={20} />
+                          </button>
+                        )}
+                        {checkPermission('Editar Monitoria') && (
+                          <button
+                            onClick={() => handleEditClick(monitoria)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                          >
+                            <Edit size={20} />
+                          </button>
+                        )}
+                        {checkPermission('Excluir Monitoria') && (
+                          <button
+                            onClick={() => handleDeleteClick(monitoria)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Modal de exclusão */}

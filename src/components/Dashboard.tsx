@@ -104,13 +104,10 @@ const Dashboard: React.FC = () => {
         <input
           type="number"
           placeholder="Meta..."
-          className="border rounded px-2 py-1 mr-2 w-full"
+          className="border rounded px-2 py-1 w-full"
           value={goals[type]}
           onChange={(e) => handleGoalChange(type, Number(e.target.value))}
         />
-        <button className="bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600 whitespace-nowrap">
-          Salvar Meta
-        </button>
       </div>
     </div>
   );
