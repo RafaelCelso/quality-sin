@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Home, PhoneCall, Mail, MessageSquare, BarChart2, Calendar, Target } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
@@ -65,7 +65,7 @@ const Dashboard: React.FC = () => {
   });
 
   const [projects, setProjects] = useState<string[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [selectedProject, setSelectedProject] = useState<string>('Todos');
 
   useEffect(() => {
     const fetchUserPermission = async () => {
@@ -95,14 +95,13 @@ const Dashboard: React.FC = () => {
     };
 
     fetchProjects();
+
+    // Adicione esta chamada para carregar os dados iniciais
+    loadDashboardData();
   }, []);
 
-  useEffect(() => {
-    const newTotalGoal = Object.values(goals).reduce((sum, value) => sum + value, 0);
-    setTotalGoal(newTotalGoal);
-  }, [goals]);
-
-  useEffect(() => {
+  // Função para carregar os dados do dashboard
+  const loadDashboardData = useCallback(() => {
     if (!userPermission) return;
 
     const monitoriaQuery = query(collection(db, 'monitorias'));
@@ -229,6 +228,16 @@ const Dashboard: React.FC = () => {
 
     return () => unsubscribe();
   }, [userPermission, goals, selectedMonth, selectedYear, selectedProject]);
+
+  // Atualizar o useEffect que depende das mudanças de filtro
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  useEffect(() => {
+    const newTotalGoal = Object.values(goals).reduce((sum, value) => sum + value, 0);
+    setTotalGoal(newTotalGoal);
+  }, [goals]);
 
   const calcularMedia = (valores: number[]) => {
     return valores.length > 0 ? valores.reduce((sum, value) => sum + value, 0) / valores.length : 0;
