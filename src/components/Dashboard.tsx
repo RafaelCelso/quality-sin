@@ -67,7 +67,7 @@ const Dashboard: React.FC = () => {
 
   const [projects, setProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('Todos');
-  const [colaboradores, setColaboradores] = useState<string[]>([]);
+  const [colaboradores, setColaboradores] = useState<{ id: string; nome: string }[]>([]);
   const [selectedColaborador, setSelectedColaborador] = useState<string>('Todos');
 
   useEffect(() => {
@@ -116,8 +116,11 @@ const Dashboard: React.FC = () => {
         colaboradoresQuery = query(collection(db, 'colaboradores'), where('projeto', '==', selectedProject));
       }
       const colaboradoresSnapshot = await getDocs(colaboradoresQuery);
-      const colaboradoresList = colaboradoresSnapshot.docs.map(doc => doc.data().nome);
-      setColaboradores(['Todos', ...colaboradoresList]);
+      const colaboradoresList = colaboradoresSnapshot.docs.map(doc => ({
+        id: doc.id,
+        nome: doc.data().nome
+      }));
+      setColaboradores([{ id: 'Todos', nome: 'Todos' }, ...colaboradoresList]);
       setSelectedColaborador('Todos');
     } catch (error) {
       console.error("Erro ao buscar colaboradores:", error);
@@ -137,7 +140,7 @@ const Dashboard: React.FC = () => {
         const monitoriaDate = new Date(monitoria.dataCriacao.seconds * 1000);
         const matchesDate = monitoriaDate.getMonth() === selectedMonth && monitoriaDate.getFullYear() === selectedYear;
         const matchesProject = selectedProject === 'Todos' || monitoria.projeto === selectedProject;
-        const matchesColaborador = selectedColaborador === 'Todos' || monitoria.colaborador === selectedColaborador;
+        const matchesColaborador = selectedColaborador === 'Todos' || monitoria.colaboradorId === selectedColaborador;
         return matchesDate && matchesProject && matchesColaborador;
       });
 
@@ -498,8 +501,8 @@ const Dashboard: React.FC = () => {
             className="w-full border rounded px-2 py-1"
           >
             {colaboradores.map((colaborador) => (
-              <option key={colaborador} value={colaborador}>
-                {colaborador}
+              <option key={colaborador.id} value={colaborador.id}>
+                {colaborador.nome}
               </option>
             ))}
           </select>
@@ -575,12 +578,13 @@ const Dashboard: React.FC = () => {
   );
 
   const generateExcelReport = () => {
+    const selectedColaboradorNome = colaboradores.find(c => c.id === selectedColaborador)?.nome || 'Todos';
     const workbook = XLSX.utils.book_new();
     const worksheetData = [
       ['Relatório Detalhado de Monitorias'],
       ['Período:', `${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' })} ${selectedYear}`],
       ['Projeto:', selectedProject],
-      ['Colaborador:', selectedColaborador],
+      ['Colaborador:', selectedColaboradorNome],
       [],
       ['Tipo', 'Total', 'Meta', 'Média de Resultados'],
       ['Ligação', progress.call, goals.call, resultsByType.call.toFixed(2)],
