@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { db, collection, addDoc, updateDoc, doc, Timestamp } from '../firebase';
-import { Mail, Star, Calendar, MessageSquare, Heart, User, Clock } from 'lucide-react';
+import { db, collection, addDoc, updateDoc, doc, Timestamp, getDoc } from '../firebase';
+import { Mail, Star, Calendar, MessageSquare, Heart, User, Clock, Briefcase } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -26,23 +26,44 @@ const MonitoriaEmail: React.FC = () => {
     tempoResposta: { nota: 0, comentario: '' },
     feedback: '',
     notaMedia: 0,
-    fileUrl: ''
+    fileUrl: '',
+    projeto: ''
   });
 
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
 
   useEffect(() => {
-    if (monitoria) {
-      setFormData(monitoria);
-    } else if (colaborador) {
-      setFormData(prev => ({
-        ...prev,
-        colaboradorNome: colaborador.nome,
-        colaboradorId: colaborador.id
-      }));
-    }
-  }, [monitoria, colaborador]);
+    const loadData = async () => {
+      if (monitoria) {
+        setFormData(monitoria);
+      } else if (colaborador) {
+        setFormData(prev => ({
+          ...prev,
+          colaboradorNome: colaborador.nome,
+          colaboradorId: colaborador.id,
+          projeto: colaborador.projeto // Adicionando o projeto do colaborador
+        }));
+      } else if (isEditing && monitoria?.colaboradorId) {
+        try {
+          const colaboradorDoc = await getDoc(doc(db, 'colaboradores', monitoria.colaboradorId));
+          if (colaboradorDoc.exists()) {
+            const colaboradorData = colaboradorDoc.data();
+            setFormData(prev => ({
+              ...prev,
+              colaboradorNome: colaboradorData.nome,
+              colaboradorId: monitoria.colaboradorId,
+              projeto: colaboradorData.projeto // Adicionando o projeto do colaborador
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching collaborator data:", error);
+        }
+      }
+    };
+
+    loadData();
+  }, [monitoria, colaborador, isEditing]);
 
   useEffect(() => {
     if (user) {
@@ -171,7 +192,7 @@ const MonitoriaEmail: React.FC = () => {
         </h1>
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h2 className="text-xl font-semibold mb-4">Colaborador: {formData.colaboradorNome}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-emerald-100 p-4 rounded-lg">
               <div className="flex items-center">
                 <Mail className="text-emerald-600 mr-2" size={20} />
@@ -192,6 +213,13 @@ const MonitoriaEmail: React.FC = () => {
                 <span className="font-medium">Avaliador</span>
               </div>
               <p className="mt-1">{formData.avaliadorNome}</p>
+            </div>
+            <div className="bg-gray-100 p-4 rounded-lg">
+              <div className="flex items-center">
+                <Briefcase className="text-emerald-600 mr-2" size={20} />
+                <span className="font-medium">Projeto</span>
+              </div>
+              <p className="mt-1">{formData.projeto}</p>
             </div>
           </div>
           <h3 className="text-lg font-semibold mt-6 mb-2">Informações do Atendimento</h3>

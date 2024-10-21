@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Home, PhoneCall, Mail, MessageSquare, BarChart2 } from 'lucide-react';
+import { Home, PhoneCall, Mail, MessageSquare, BarChart2, Calendar, Target } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import Sidebar from './Sidebar';
-import { auth, db, collection, query, where, getDocs, onSnapshot } from '../firebase';
+import CircularProgressBar from './CircularProgressBar';
+import { auth, db, collection, query, where, getDocs, onSnapshot, orderBy, getDoc, doc, updateDoc } from '../firebase';
 import usePermissions from '../hooks/usePermissions';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -54,6 +55,18 @@ const Dashboard: React.FC = () => {
     tempoResposta: 0
   });
 
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showMetaModal, setShowMetaModal] = useState(false);
+  const [tempGoals, setTempGoals] = useState({
+    call: 30,
+    email: 30,
+    chat: 30
+  });
+
+  const [projects, setProjects] = useState<string[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>('');
+
   useEffect(() => {
     const fetchUserPermission = async () => {
       const user = auth.currentUser;
@@ -68,6 +81,20 @@ const Dashboard: React.FC = () => {
     };
 
     fetchUserPermission();
+
+    // Adicione este novo efeito para buscar os projetos
+    const fetchProjects = async () => {
+      try {
+        const projectsQuery = query(collection(db, 'projetos'), orderBy('nome'));
+        const projectsSnapshot = await getDocs(projectsQuery);
+        const projectsList = projectsSnapshot.docs.map(doc => doc.data().nome);
+        setProjects(['Todos', ...projectsList]);
+      } catch (error) {
+        console.error("Erro ao buscar projetos:", error);
+      }
+    };
+
+    fetchProjects();
   }, []);
 
   useEffect(() => {
@@ -84,10 +111,10 @@ const Dashboard: React.FC = () => {
       const monitorias = snapshot.docs.map(doc => doc.data());
       
       const filteredMonitorias = monitorias.filter(monitoria => {
-        if (userPermission === 'Admin') return true;
-        if (userPermission === 'Qualidade') return monitoria.avaliadorId === auth.currentUser?.uid;
-        if (userPermission === 'Supervisor') return monitoria.supervisorId === auth.currentUser?.uid;
-        return false;
+        const monitoriaDate = new Date(monitoria.dataCriacao.seconds * 1000);
+        const matchesDate = monitoriaDate.getMonth() === selectedMonth && monitoriaDate.getFullYear() === selectedYear;
+        const matchesProject = selectedProject === 'Todos' || monitoria.projeto === selectedProject;
+        return matchesDate && matchesProject;
       });
 
       const newProgress = {
@@ -201,7 +228,7 @@ const Dashboard: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [userPermission, goals]);
+  }, [userPermission, goals, selectedMonth, selectedYear, selectedProject]);
 
   const calcularMedia = (valores: number[]) => {
     return valores.length > 0 ? valores.reduce((sum, value) => sum + value, 0) / valores.length : 0;
@@ -211,29 +238,34 @@ const Dashboard: React.FC = () => {
     setGoals(prev => ({ ...prev, [type]: value }));
   };
 
+  const handleMetaChange = (type: keyof typeof tempGoals, value: number) => {
+    setTempGoals(prev => ({ ...prev, [type]: value }));
+  };
+
+  const handleSaveMetas = () => {
+    setGoals(tempGoals);
+    setShowMetaModal(false);
+  };
+
   const renderCard = (title: string, icon: React.ReactNode, type: keyof typeof goals) => (
     <div className="bg-white rounded-lg shadow-md p-4">
-      <div className="flex items-center mb-2">
+      <div className="flex items-center mb-4">
         <div className="bg-emerald-500 rounded-full p-2 mr-2">
           {icon}
         </div>
         <h3 className="text-lg font-semibold">Monitorias {title}</h3>
       </div>
-      <div className="flex items-center mb-2">
-        <span className="mr-2">Progresso</span>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${(progress[type] / goals[type]) * 100}%` }}></div>
-        </div>
-        <span className="ml-2">{progress[type]} / {goals[type]}</span>
-      </div>
-      <div className="flex items-center">
-        <input
-          type="number"
-          placeholder="Meta..."
-          className="border rounded px-2 py-1 w-full"
-          value={goals[type]}
-          onChange={(e) => handleGoalChange(type, Number(e.target.value))}
+      <div className="flex flex-col items-center">
+        <CircularProgressBar
+          percentage={(progress[type] / goals[type]) * 100}
+          size={100}
+          strokeWidth={8}
+          circleOneStroke="#e5e7eb"
+          circleTwoStroke="#10b981"
         />
+        <div className="mt-4 text-center">
+          <span className="font-semibold text-lg">{progress[type]} / {goals[type]}</span>
+        </div>
       </div>
     </div>
   );
@@ -246,15 +278,17 @@ const Dashboard: React.FC = () => {
         </div>
         <h3 className="text-lg font-semibold">Monitorias Totais</h3>
       </div>
-      <div className="flex items-center mb-2">
-        <span className="mr-2">Progresso</span>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${totalProgress}%` }}></div>
+      <div className="flex flex-col items-center">
+        <CircularProgressBar
+          percentage={totalProgress}
+          size={120}
+          strokeWidth={10}
+          circleOneStroke="#e5e7eb"
+          circleTwoStroke="#10b981"
+        />
+        <div className="mt-2 text-center">
+          <span className="font-semibold">Meta Total: {totalGoal}</span>
         </div>
-        <span className="ml-2">{totalProgress.toFixed(1)}%</span>
-      </div>
-      <div className="text-center font-semibold">
-        Meta Total: {totalGoal}
       </div>
     </div>
   );
@@ -373,12 +407,144 @@ const Dashboard: React.FC = () => {
     );
   };
 
+  const renderDateAndProjectFilter = () => (
+    <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <div className="flex items-center mb-2">
+        <Calendar className="text-emerald-500 mr-2" size={20} />
+        <h3 className="text-lg font-semibold">Filtros</h3>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(Number(e.target.value))}
+            className="w-full border rounded px-2 py-1"
+          >
+            {Array.from({ length: 12 }, (_, i) => (
+              <option key={i} value={i}>
+                {new Date(0, i).toLocaleString('default', { month: 'long' })}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Ano</label>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="w-full border rounded px-2 py-1"
+          >
+            {Array.from({ length: 10 }, (_, i) => (
+              <option key={i} value={new Date().getFullYear() - i}>
+                {new Date().getFullYear() - i}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Projeto</label>
+          <select
+            value={selectedProject}
+            onChange={(e) => setSelectedProject(e.target.value)}
+            className="w-full border rounded px-2 py-1"
+          >
+            {projects.map((project) => (
+              <option key={project} value={project}>
+                {project}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMetaModal = () => (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-4">Definir Metas</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Meta de Ligações</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <PhoneCall className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="number"
+                value={tempGoals.call}
+                onChange={(e) => handleMetaChange('call', Number(e.target.value))}
+                className="pl-10 mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Meta de E-mails</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="number"
+                value={tempGoals.email}
+                onChange={(e) => handleMetaChange('email', Number(e.target.value))}
+                className="pl-10 mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Meta de Chats</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MessageSquare className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="number"
+                value={tempGoals.chat}
+                onChange={(e) => handleMetaChange('chat', Number(e.target.value))}
+                className="pl-10 mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end space-x-3">
+          <button
+            onClick={() => setShowMetaModal(false)}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSaveMetas}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors duration-200"
+          >
+            Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-        <p className="text-gray-600 mb-6">Resumo das atividades</p>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
+            <p className="text-gray-600">Resumo das atividades</p>
+          </div>
+          <button
+            onClick={() => setShowMetaModal(true)}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 flex items-center"
+          >
+            <Target size={20} className="mr-2" />
+            Definir Meta
+          </button>
+        </div>
+        
+        {renderDateAndProjectFilter()}
         
         <div className="grid grid-cols-1 gap-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -398,6 +564,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+      {showMetaModal && renderMetaModal()}
     </div>
   );
 };

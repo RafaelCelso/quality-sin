@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { db, collection, addDoc, updateDoc, doc, Timestamp, getDoc } from '../firebase';
-import { Phone, Star, Clock, Calendar, MessageSquare, Heart, Target, User, CheckCircle, AlertCircle, HelpCircle, Smile, Shield, BookOpen, UserCheck, Flag, Zap } from 'lucide-react';
+import { Phone, Star, Clock, Calendar, MessageSquare, Heart, Target, User, CheckCircle, AlertCircle, HelpCircle, Smile, Shield, BookOpen, UserCheck, Flag, Zap, Briefcase } from 'lucide-react';
 import InputMask from 'react-input-mask';
 import usePermissions from '../hooks/usePermissions';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -36,7 +36,8 @@ const MonitoriaLigacao: React.FC = () => {
     enriqueca: { nota: '', comentario: '' },
     feedback: '',
     notaMedia: 0,
-    audioUrl: ''
+    audioUrl: '',
+    projeto: ''
   });
 
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -50,7 +51,8 @@ const MonitoriaLigacao: React.FC = () => {
         setFormData(prev => ({
           ...prev,
           colaboradorNome: colaborador.nome,
-          colaboradorId: colaborador.id
+          colaboradorId: colaborador.id,
+          projeto: colaborador.projeto // Adicionando o projeto do colaborador
         }));
       } else if (isEditing && monitoria?.colaboradorId) {
         try {
@@ -60,7 +62,8 @@ const MonitoriaLigacao: React.FC = () => {
             setFormData(prev => ({
               ...prev,
               colaboradorNome: colaboradorData.nome,
-              colaboradorId: monitoria.colaboradorId
+              colaboradorId: monitoria.colaboradorId,
+              projeto: colaboradorData.projeto // Adicionando o projeto do colaborador
             }));
           }
         } catch (error) {
@@ -203,7 +206,7 @@ const MonitoriaLigacao: React.FC = () => {
         </h1>
         <div className="bg-white p-6 rounded-lg shadow mb-6">
           <h2 className="text-xl font-semibold mb-4">{formData.colaboradorNome}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-emerald-100 p-4 rounded-lg">
               <div className="flex items-center">
                 <Phone className="text-emerald-600 mr-2" size={20} />
@@ -224,6 +227,13 @@ const MonitoriaLigacao: React.FC = () => {
                 <span className="font-medium">Avaliador</span>
               </div>
               <p className="mt-1">{formData.avaliadorNome}</p>
+            </div>
+            <div className="bg-gray-100 p-4 rounded-lg">
+              <div className="flex items-center">
+                <Briefcase className="text-emerald-600 mr-2" size={20} />
+                <span className="font-medium">Projeto</span>
+              </div>
+              <p className="mt-1">{formData.projeto}</p>
             </div>
           </div>
           <h3 className="text-lg font-semibold mt-6 mb-2">Informações do Atendimento</h3>

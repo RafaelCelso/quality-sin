@@ -287,6 +287,7 @@ const Monitorias: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pontuação</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliador</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projeto</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                   </tr>
@@ -311,6 +312,7 @@ const Monitorias: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{monitoria.avaliadorNome}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{new Date(monitoria.dataCriacao.seconds * 1000).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{monitoria.projeto}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {monitoria.registroFeedback && (
                           <button
