@@ -66,6 +66,8 @@ const Dashboard: React.FC = () => {
 
   const [projects, setProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('Todos');
+  const [colaboradores, setColaboradores] = useState<string[]>([]);
+  const [selectedColaborador, setSelectedColaborador] = useState<string>('Todos');
 
   useEffect(() => {
     const fetchUserPermission = async () => {
@@ -100,6 +102,27 @@ const Dashboard: React.FC = () => {
     loadDashboardData();
   }, []);
 
+  useEffect(() => {
+    fetchColaboradores();
+  }, [selectedProject]);
+
+  const fetchColaboradores = async () => {
+    try {
+      let colaboradoresQuery;
+      if (selectedProject === 'Todos') {
+        colaboradoresQuery = query(collection(db, 'colaboradores'));
+      } else {
+        colaboradoresQuery = query(collection(db, 'colaboradores'), where('projeto', '==', selectedProject));
+      }
+      const colaboradoresSnapshot = await getDocs(colaboradoresQuery);
+      const colaboradoresList = colaboradoresSnapshot.docs.map(doc => doc.data().nome);
+      setColaboradores(['Todos', ...colaboradoresList]);
+      setSelectedColaborador('Todos');
+    } catch (error) {
+      console.error("Erro ao buscar colaboradores:", error);
+    }
+  };
+
   // Função para carregar os dados do dashboard
   const loadDashboardData = useCallback(() => {
     if (!userPermission) return;
@@ -113,7 +136,8 @@ const Dashboard: React.FC = () => {
         const monitoriaDate = new Date(monitoria.dataCriacao.seconds * 1000);
         const matchesDate = monitoriaDate.getMonth() === selectedMonth && monitoriaDate.getFullYear() === selectedYear;
         const matchesProject = selectedProject === 'Todos' || monitoria.projeto === selectedProject;
-        return matchesDate && matchesProject;
+        const matchesColaborador = selectedColaborador === 'Todos' || monitoria.colaborador === selectedColaborador;
+        return matchesDate && matchesProject && matchesColaborador;
       });
 
       const newProgress = {
@@ -227,7 +251,7 @@ const Dashboard: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [userPermission, goals, selectedMonth, selectedYear, selectedProject]);
+  }, [userPermission, goals, selectedMonth, selectedYear, selectedProject, selectedColaborador]);
 
   // Atualizar o useEffect que depende das mudanças de filtro
   useEffect(() => {
@@ -422,7 +446,7 @@ const Dashboard: React.FC = () => {
         <Calendar className="text-emerald-500 mr-2" size={20} />
         <h3 className="text-lg font-semibold">Filtros</h3>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
           <select
@@ -461,6 +485,20 @@ const Dashboard: React.FC = () => {
             {projects.map((project) => (
               <option key={project} value={project}>
                 {project}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Colaborador</label>
+          <select
+            value={selectedColaborador}
+            onChange={(e) => setSelectedColaborador(e.target.value)}
+            className="w-full border rounded px-2 py-1"
+          >
+            {colaboradores.map((colaborador) => (
+              <option key={colaborador} value={colaborador}>
+                {colaborador}
               </option>
             ))}
           </select>
